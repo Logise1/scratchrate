@@ -1,13 +1,99 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scratch Trending Explorer + Auth</title>
+    <title>Scratch Trending Explorer</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration (Environment Aware)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
+
+        let db, auth, user;
+
+        if (firebaseConfig) {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            // Auto-login to Firebase for database access
+            signInAnonymously(auth).then((u) => {
+                user = u.user;
+                console.log("Connected to Database");
+            }).catch(console.error);
+        }
+
+        // Expose functions to window for HTML access
+        window.rateProject = async (stars) => {
+            if (!db || !auth.currentUser) return alert("Database not connected.");
+            
+            // We use a simulated 'Scratch Username' for the vote ID, but Firebase Auth for security
+            const scratchUser = localStorage.getItem('scratch_user');
+            if (!scratchUser) return alert("Please login with Scratch first to vote.");
+            
+            const currentProjectId = window.currentProjectId; // Set by modal
+            if(!currentProjectId) return;
+
+            // Save vote to Firestore
+            // Path: artifacts/{appId}/public/data/votes
+            // DocID: {projectId}_{scratchUser} (One vote per user per project)
+            const voteRef = doc(db, 'artifacts', appId, 'public', 'data', 'votes', `${currentProjectId}_${scratchUser}`);
+            
+            // Optimistic UI Update
+            updateStarsUI(stars);
+
+            try {
+                await setDoc(voteRef, {
+                    projectId: String(currentProjectId),
+                    username: scratchUser,
+                    rating: stars,
+                    timestamp: Date.now()
+                });
+                
+                // Show feedback
+                const msg = document.getElementById('vote-msg');
+                msg.textContent = `Saved: ${stars} Stars!`;
+                msg.className = "text-center text-xs text-green-400 mt-2";
+                setTimeout(() => msg.textContent = "", 2000);
+            } catch (e) {
+                console.error("Error saving vote:", e);
+                alert("Failed to save vote.");
+            }
+        };
+
+        window.listenToVotes = (projectId) => {
+            if (!db) return;
+            
+            // Query votes for this project
+            const q = query(
+                collection(db, 'artifacts', appId, 'public', 'data', 'votes'),
+                where("projectId", "==", String(projectId))
+            );
+
+            // Real-time listener
+            return onSnapshot(q, (snapshot) => {
+                let totalStars = 0;
+                let count = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    totalStars += data.rating;
+                    count++;
+                });
+
+                updateRatingDisplay(totalStars, count);
+            });
+        };
+    </script>
     
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
@@ -19,6 +105,9 @@
         .scratch-text { color: #f97316; }
         .loader { border: 4px solid #1e293b; border-top: 4px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .star-btn { cursor: pointer; transition: color 0.2s; }
+        .star-btn:hover, .star-btn.active { color: #facc15; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -33,12 +122,12 @@
             
             <!-- Auth Section -->
             <div id="auth-section" class="flex items-center gap-4">
-                <button id="btn-login" onclick="login()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> Login con Scratch
+                <button id="btn-login" onclick="fakeLogin()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Login with Scratch
                 </button>
                 <div id="user-info" class="hidden flex items-center gap-3">
-                    <span class="text-sm text-slate-300">Hola, <span id="username-display" class="font-bold text-white">User</span></span>
-                    <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 underline">Salir</button>
+                    <span class="text-sm text-slate-300">Hi, <span id="username-display" class="font-bold text-white">User</span></span>
+                    <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 underline">Logout</button>
                 </div>
             </div>
         </div>
@@ -48,7 +137,7 @@
     <main class="flex-grow container mx-auto px-4 py-8">
         <div id="loading" class="flex flex-col items-center justify-center py-20">
             <div class="loader mb-4"></div>
-            <p class="text-slate-400 animate-pulse">Cargando proyectos...</p>
+            <p class="text-slate-400 animate-pulse">Loading Projects...</p>
         </div>
         <div id="projects-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 hidden"></div>
     </main>
@@ -57,77 +146,73 @@
     <div id="project-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
         <div class="bg-slate-900 rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col border border-slate-700">
             <div class="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900">
-                <h2 class="text-lg font-semibold text-slate-300 truncate pr-4" id="modal-title-top">Visualizador</h2>
+                <h2 class="text-lg font-semibold text-slate-300 truncate pr-4" id="modal-title-top">Project Viewer</h2>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-2xl"></i></button>
             </div>
 
             <div class="flex-grow overflow-y-auto p-0 lg:p-6">
                 <div class="flex flex-col lg:flex-row gap-6">
-                    <!-- Izquierda: Embed -->
+                    <!-- Left: Embed -->
                     <div class="w-full lg:w-2/3 flex flex-col gap-4">
                         <div class="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-lg border border-slate-800 relative">
                             <iframe id="modal-iframe" class="w-full h-full" src="" allowtransparency="true" allowfullscreen></iframe>
                         </div>
                         <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
                             <h1 id="modal-title" class="text-3xl font-bold text-white mb-1">...</h1>
-                            <p class="text-slate-400">por <span id="modal-author" class="text-orange-400 font-bold">...</span> <span class="text-xs bg-slate-700 px-2 py-0.5 rounded ml-2" id="modal-id">ID</span></p>
+                            <p class="text-slate-400">by <span id="modal-author" class="text-orange-400 font-bold">...</span> <span class="text-xs bg-slate-700 px-2 py-0.5 rounded ml-2" id="modal-id">ID</span></p>
                         </div>
                     </div>
 
-                    <!-- Derecha: Datos + Votos Reales -->
+                    <!-- Right: Data + Star Rating -->
                     <div class="w-full lg:w-1/3 flex flex-col gap-4">
                         <!-- Rating Box -->
                         <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 shadow-lg relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-chart-simple text-6xl"></i></div>
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">REAL ENJOYMENT RATING</h3>
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-star text-6xl"></i></div>
+                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">COMMUNITY RATING</h3>
                             
                             <div class="flex items-center gap-4 mb-4">
                                 <div class="relative w-20 h-20 flex items-center justify-center">
                                     <svg class="transform -rotate-90 w-20 h-20">
                                         <circle cx="40" cy="40" r="36" stroke="#334155" stroke-width="8" fill="transparent" />
-                                        <circle id="enjoyment-circle" cx="40" cy="40" r="36" stroke="#22c55e" stroke-width="8" fill="transparent" stroke-dasharray="226" stroke-dashoffset="226" />
+                                        <circle id="enjoyment-circle" cx="40" cy="40" r="36" stroke="#fbbf24" stroke-width="8" fill="transparent" stroke-dasharray="226" stroke-dashoffset="226" />
                                     </svg>
-                                    <span id="enjoyment-text" class="absolute text-xl font-bold text-white">0%</span>
+                                    <span id="rating-text" class="absolute text-xl font-bold text-white">0.0</span>
                                 </div>
                                 <div>
-                                    <span id="enjoyment-label" class="text-green-400 font-bold text-lg">Calculando...</span>
-                                    <div class="text-xs text-slate-500">Basado en usuarios reales</div>
-                                </div>
-                            </div>
-
-                            <!-- Votos Reales Cloudflare -->
-                            <div class="grid grid-cols-2 gap-2 text-center text-sm border-t border-slate-700 pt-3 mb-2">
-                                <div class="bg-slate-700/50 rounded p-1">
-                                    <i class="fa-solid fa-thumbs-up text-green-400"></i> <span id="cf-up" class="font-bold text-white ml-1">0</span>
-                                </div>
-                                <div class="bg-slate-700/50 rounded p-1">
-                                    <i class="fa-solid fa-heart text-red-500"></i> <span id="cf-love" class="font-bold text-white ml-1">0</span>
+                                    <div class="flex text-yellow-400 text-sm mb-1" id="stars-display">
+                                        <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
+                                    </div>
+                                    <div class="text-xs text-slate-500"><span id="vote-count">0</span> votes</div>
                                 </div>
                             </div>
                             
                             <!-- Stats Scratch Originales -->
-                            <div class="flex justify-between text-xs text-slate-500 mt-2">
-                                <span><i class="fa-regular fa-eye"></i> Scratch Views: <span id="stat-views">0</span></span>
-                                <span><i class="fa-regular fa-heart"></i> Scratch Loves: <span id="stat-loves">0</span></span>
+                            <div class="flex justify-between text-xs text-slate-500 mt-2 border-t border-slate-700 pt-2">
+                                <span><i class="fa-regular fa-eye"></i> Views: <span id="stat-views">0</span></span>
+                                <span><i class="fa-regular fa-heart"></i> Loves: <span id="stat-loves">0</span></span>
                             </div>
                         </div>
 
-                        <!-- Panel Votación -->
+                        <!-- Panel Votación (Stars) -->
                         <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">VOTA (Requiere Login)</h3>
-                            <div id="vote-buttons" class="flex gap-2 opacity-50 pointer-events-none">
-                                <button onclick="sendVote('up')" class="flex-1 bg-slate-700 hover:bg-green-600 text-white py-3 rounded-lg transition group">
-                                    <i class="fa-solid fa-thumbs-up group-hover:scale-110 transition-transform"></i>
-                                </button>
-                                <button onclick="sendVote('love')" class="flex-1 bg-slate-700 hover:bg-red-500 text-white py-3 rounded-lg transition group">
-                                    <i class="fa-solid fa-heart group-hover:scale-110 transition-transform"></i>
-                                </button>
+                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">RATE THIS PROJECT</h3>
+                            
+                            <div id="vote-area" class="opacity-50 pointer-events-none transition-opacity">
+                                <div class="flex justify-center gap-2 text-3xl text-slate-600 mb-2">
+                                    <button onclick="window.rateProject(1)" onmouseover="hoverStars(1)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s1"></button>
+                                    <button onclick="window.rateProject(2)" onmouseover="hoverStars(2)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s2"></button>
+                                    <button onclick="window.rateProject(3)" onmouseover="hoverStars(3)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s3"></button>
+                                    <button onclick="window.rateProject(4)" onmouseover="hoverStars(4)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s4"></button>
+                                    <button onclick="window.rateProject(5)" onmouseover="hoverStars(5)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s5"></button>
+                                </div>
+                                <p id="vote-msg" class="text-center text-xs text-slate-500">Click a star to vote</p>
                             </div>
-                            <p id="vote-msg" class="text-center text-xs text-orange-400 mt-3">Inicia sesión para votar.</p>
+                            
+                            <p id="login-warning" class="text-center text-xs text-orange-400 mt-3">Please login to rate.</p>
                         </div>
 
                         <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 flex-grow">
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-2">Descripción</h3>
+                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-2">Instructions & Notes</h3>
                             <div class="overflow-y-auto max-h-40 custom-scrollbar pr-2">
                                 <p id="modal-desc" class="text-sm text-slate-300 whitespace-pre-wrap">...</p>
                             </div>
@@ -139,79 +224,64 @@
     </div>
 
     <script>
-        // --- CONFIGURACIÓN ---
-        // ¡IMPORTANTE! CAMBIA ESTO POR LA URL DE TU CLOUDFLARE WORKER
-        const WORKER_URL = "https://scratchrate.logise1123.workers.dev"; 
-        
-        // Proxy para API de Scratch
+        // --- CONFIGURATION ---
         const PROXY = "https://api.allorigins.win/raw?url=";
         const API_SCRATCH = "https://api.scratch.mit.edu/explore/projects?limit=32&offset=0&language=es&mode=trending&q=*";
 
         let currentProject = null;
-        let sessionToken = null;
         let currentUser = null;
+        let voteUnsubscribe = null;
 
-        // --- INICIO ---
+        // --- INIT ---
         window.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             fetchProjects();
         });
 
+        // --- AUTH (SIMULATED FOR USERNAME, FIREBASE FOR DB) ---
         function checkAuth() {
-            // Revisar si venimos de una redirección con token
-            const params = new URLSearchParams(window.location.search);
-            const tokenParam = params.get('token');
-            const userParam = params.get('username');
-
-            if (tokenParam && userParam) {
-                // Guardar en localStorage y limpiar URL
-                localStorage.setItem('scratch_session', tokenParam);
-                localStorage.setItem('scratch_user', userParam);
-                window.history.replaceState({}, document.title, "/");
-                sessionToken = tokenParam;
-                currentUser = userParam;
-            } else {
-                // Revisar localStorage
-                sessionToken = localStorage.getItem('scratch_session');
-                currentUser = localStorage.getItem('scratch_user');
-            }
-
+            currentUser = localStorage.getItem('scratch_user');
             updateAuthUI();
         }
 
         function updateAuthUI() {
             const btnLogin = document.getElementById('btn-login');
             const userInfo = document.getElementById('user-info');
-            const voteBtns = document.getElementById('vote-buttons');
-            const voteMsg = document.getElementById('vote-msg');
+            const voteArea = document.getElementById('vote-area');
+            const loginWarn = document.getElementById('login-warning');
 
-            if (sessionToken) {
+            if (currentUser) {
                 btnLogin.classList.add('hidden');
                 userInfo.classList.remove('hidden');
                 document.getElementById('username-display').textContent = currentUser;
                 
-                // Activar botones de voto
-                voteBtns.classList.remove('opacity-50', 'pointer-events-none');
-                voteMsg.textContent = "¡Vota para influir en el rating!";
-                voteMsg.classList.replace('text-orange-400', 'text-green-400');
+                // Enable Voting
+                voteArea.classList.remove('opacity-50', 'pointer-events-none');
+                loginWarn.classList.add('hidden');
             } else {
                 btnLogin.classList.remove('hidden');
                 userInfo.classList.add('hidden');
+                voteArea.classList.add('opacity-50', 'pointer-events-none');
+                loginWarn.classList.remove('hidden');
             }
         }
 
-        function login() {
-            // Redirige al endpoint de login del Worker
-            window.location.href = `${WORKER_URL}/auth/login`;
+        // Simulates a login (since we can't do real OAuth redirects easily without backend in this snippet)
+        function fakeLogin() {
+            const username = prompt("Enter your Scratch Username to simulate login:");
+            if(username) {
+                localStorage.setItem('scratch_user', username);
+                checkAuth();
+            }
         }
 
         function logout() {
-            localStorage.removeItem('scratch_session');
             localStorage.removeItem('scratch_user');
+            checkAuth();
             location.reload();
         }
 
-        // --- LÓGICA DE PROYECTOS ---
+        // --- PROJECTS LOGIC ---
         async function fetchProjects() {
             try {
                 const res = await fetch(PROXY + encodeURIComponent(API_SCRATCH));
@@ -219,7 +289,7 @@
                 renderGrid(data);
             } catch (e) {
                 console.error(e);
-                document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error cargando Scratch API</p>";
+                document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading Scratch API. Try refreshing.</p>";
             }
         }
 
@@ -252,12 +322,14 @@
             });
         }
 
-        // --- MODAL & DATOS REALES ---
-        async function openModal(p) {
+        // --- MODAL & LOGIC ---
+        function openModal(p) {
             currentProject = p;
+            window.currentProjectId = p.id; // Expose for module script
+            
             const modal = document.getElementById('project-modal');
             
-            // UI Básica
+            // UI Basic
             document.getElementById('modal-title').textContent = p.title;
             document.getElementById('modal-title-top').textContent = p.title;
             document.getElementById('modal-author').textContent = p.author.username;
@@ -269,107 +341,69 @@
             document.getElementById('stat-views').textContent = formatNum(p.stats.views);
             document.getElementById('stat-loves').textContent = formatNum(p.stats.loves);
 
-            // Resetear datos reales mientras cargan
-            document.getElementById('cf-up').textContent = "-";
-            document.getElementById('cf-love').textContent = "-";
-            updateRatingUI(0, true); 
+            // Reset Rating UI
+            updateRatingDisplay(0, 0); // Reset to 0 before loading
+            resetStars();
+
+            // Connect to Firebase listener if available
+            if(window.listenToVotes) {
+                if(voteUnsubscribe) voteUnsubscribe(); // Stop listening to previous project
+                voteUnsubscribe = window.listenToVotes(p.id);
+            }
 
             modal.classList.remove('hidden');
-
-            // Cargar datos reales del Worker
-            await fetchRealStats(p.id);
         }
 
-        async function fetchRealStats(id) {
-            try {
-                const res = await fetch(`${WORKER_URL}/stats?id=${id}`);
-                const data = await res.json();
-                
-                document.getElementById('cf-up').textContent = data.up;
-                document.getElementById('cf-love').textContent = data.love;
-                
-                // Calcular Rating: (Votos Reales / Vistas Scratch) * Factor + Votos Reales
-                const realVotes = data.up + (data.love * 1.5);
-                // Si nadie vota, usamos 50% base. Si votan, sube.
-                let rating = 50;
-                
-                if (realVotes > 0) {
-                    rating = 60 + (realVotes * 2); 
-                    if (rating > 100) rating = 100;
-                }
-                
-                updateRatingUI(rating, false);
-
-            } catch (e) {
-                console.error("Error worker stats", e);
-            }
-        }
-
-        async function sendVote(type) {
-            if (!sessionToken) return alert("Debes iniciar sesión");
-
-            // Feedback optimista
-            const voteMsg = document.getElementById('vote-msg');
-            voteMsg.textContent = "Enviando voto...";
+        // Update the circular progress and text based on average
+        window.updateRatingDisplay = (totalStars, count) => {
+            const average = count === 0 ? 0 : (totalStars / count).toFixed(1);
+            const percentage = (average / 5) * 100;
             
-            try {
-                const res = await fetch(`${WORKER_URL}/vote`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionToken: sessionToken,
-                        projectId: currentProject.id,
-                        voteType: type
-                    })
-                });
-                
-                const data = await res.json();
-                
-                if (data.success) {
-                    voteMsg.textContent = "¡Voto guardado!";
-                    fetchRealStats(currentProject.id); // Recargar
-                } else {
-                    voteMsg.textContent = "Error al votar.";
-                }
-            } catch (e) {
-                console.error(e);
-                voteMsg.textContent = "Error de conexión.";
-            }
-        }
-
-        function updateRatingUI(percentage, loading) {
+            document.getElementById('rating-text').textContent = average;
+            document.getElementById('vote-count').textContent = count;
+            
+            // Circle Progress
             const circle = document.getElementById('enjoyment-circle');
-            const text = document.getElementById('enjoyment-text');
-            const label = document.getElementById('enjoyment-label');
-            
-            if (loading) {
-                text.textContent = "--";
-                label.textContent = "Cargando...";
-                return;
-            }
-
             const offset = 226 - (226 * percentage) / 100;
             circle.style.strokeDashoffset = offset;
-            text.textContent = Math.round(percentage) + "%";
-            
-            if (percentage >= 80) {
-                label.textContent = "Masterpiece";
-                label.className = "text-green-400 font-bold text-lg";
-                circle.setAttribute("stroke", "#22c55e");
-            } else if (percentage >= 50) {
-                label.textContent = "Bueno";
-                label.className = "text-yellow-400 font-bold text-lg";
-                circle.setAttribute("stroke", "#facc15");
-            } else {
-                label.textContent = "Normal";
-                label.className = "text-slate-400 font-bold text-lg";
-                circle.setAttribute("stroke", "#94a3b8");
+
+            // Star icons display (small ones)
+            const starsDisplay = document.getElementById('stars-display');
+            let starsHTML = '';
+            for(let i=1; i<=5; i++) {
+                if (i <= Math.round(average)) starsHTML += '<i class="fa-solid fa-star"></i>';
+                else starsHTML += '<i class="fa-regular fa-star"></i>';
+            }
+            starsDisplay.innerHTML = starsHTML;
+        }
+
+        // UI Interactions for Voting
+        window.hoverStars = (num) => {
+            for(let i=1; i<=5; i++) {
+                const s = document.getElementById(`s${i}`);
+                if(i <= num) s.classList.add('text-yellow-400');
+                else s.classList.remove('text-yellow-400');
+            }
+        }
+
+        window.resetStars = () => {
+            for(let i=1; i<=5; i++) {
+                document.getElementById(`s${i}`).classList.remove('text-yellow-400');
+            }
+        }
+
+        window.updateStarsUI = (votedNum) => {
+             for(let i=1; i<=5; i++) {
+                const s = document.getElementById(`s${i}`);
+                if(i <= votedNum) s.classList.add('text-yellow-400');
+                else s.classList.remove('text-yellow-400');
             }
         }
 
         function closeModal() {
             document.getElementById('project-modal').classList.add('hidden');
             document.getElementById('modal-iframe').src = "";
+            if(voteUnsubscribe) voteUnsubscribe();
         }
 
         function formatNum(n) {
