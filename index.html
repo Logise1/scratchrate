@@ -8,92 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase Configuration (Environment Aware)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
-
-        let db, auth, user;
-
-        if (firebaseConfig) {
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            
-            // Auto-login to Firebase for database access
-            signInAnonymously(auth).then((u) => {
-                user = u.user;
-                console.log("Connected to Database");
-            }).catch(console.error);
-        }
-
-        // Expose functions to window for HTML access
-        window.rateProject = async (stars) => {
-            if (!db || !auth.currentUser) return alert("Database not connected.");
-            
-            // We use a simulated 'Scratch Username' for the vote ID, but Firebase Auth for security
-            const scratchUser = localStorage.getItem('scratch_user');
-            if (!scratchUser) return alert("Please login with Scratch first to vote.");
-            
-            const currentProjectId = window.currentProjectId; // Set by modal
-            if(!currentProjectId) return;
-
-            // Save vote to Firestore
-            // Path: artifacts/{appId}/public/data/votes
-            // DocID: {projectId}_{scratchUser} (One vote per user per project)
-            const voteRef = doc(db, 'artifacts', appId, 'public', 'data', 'votes', `${currentProjectId}_${scratchUser}`);
-            
-            // Optimistic UI Update
-            updateStarsUI(stars);
-
-            try {
-                await setDoc(voteRef, {
-                    projectId: String(currentProjectId),
-                    username: scratchUser,
-                    rating: stars,
-                    timestamp: Date.now()
-                });
-                
-                // Show feedback
-                const msg = document.getElementById('vote-msg');
-                msg.textContent = `Saved: ${stars} Stars!`;
-                msg.className = "text-center text-xs text-green-400 mt-2";
-                setTimeout(() => msg.textContent = "", 2000);
-            } catch (e) {
-                console.error("Error saving vote:", e);
-                alert("Failed to save vote.");
-            }
-        };
-
-        window.listenToVotes = (projectId) => {
-            if (!db) return;
-            
-            // Query votes for this project
-            const q = query(
-                collection(db, 'artifacts', appId, 'public', 'data', 'votes'),
-                where("projectId", "==", String(projectId))
-            );
-
-            // Real-time listener
-            return onSnapshot(q, (snapshot) => {
-                let totalStars = 0;
-                let count = 0;
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    totalStars += data.rating;
-                    count++;
-                });
-
-                updateRatingDisplay(totalStars, count);
-            });
-        };
-    </script>
     
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
@@ -122,7 +36,7 @@
             
             <!-- Auth Section -->
             <div id="auth-section" class="flex items-center gap-4">
-                <button id="btn-login" onclick="fakeLogin()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2">
+                <button id="btn-login" onclick="loginWithWorker()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2">
                     <i class="fa-solid fa-right-to-bracket"></i> Login with Scratch
                 </button>
                 <div id="user-info" class="hidden flex items-center gap-3">
@@ -182,7 +96,7 @@
                                     <div class="flex text-yellow-400 text-sm mb-1" id="stars-display">
                                         <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
                                     </div>
-                                    <div class="text-xs text-slate-500"><span id="vote-count">0</span> votes</div>
+                                    <div class="text-xs text-slate-500"><span id="vote-count">0</span> votes (Cloudflare)</div>
                                 </div>
                             </div>
                             
@@ -199,11 +113,11 @@
                             
                             <div id="vote-area" class="opacity-50 pointer-events-none transition-opacity">
                                 <div class="flex justify-center gap-2 text-3xl text-slate-600 mb-2">
-                                    <button onclick="window.rateProject(1)" onmouseover="hoverStars(1)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s1"></button>
-                                    <button onclick="window.rateProject(2)" onmouseover="hoverStars(2)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s2"></button>
-                                    <button onclick="window.rateProject(3)" onmouseover="hoverStars(3)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s3"></button>
-                                    <button onclick="window.rateProject(4)" onmouseover="hoverStars(4)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s4"></button>
-                                    <button onclick="window.rateProject(5)" onmouseover="hoverStars(5)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s5"></button>
+                                    <button onclick="rateProject(1)" onmouseover="hoverStars(1)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s1"></button>
+                                    <button onclick="rateProject(2)" onmouseover="hoverStars(2)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s2"></button>
+                                    <button onclick="rateProject(3)" onmouseover="hoverStars(3)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s3"></button>
+                                    <button onclick="rateProject(4)" onmouseover="hoverStars(4)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s4"></button>
+                                    <button onclick="rateProject(5)" onmouseover="hoverStars(5)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s5"></button>
                                 </div>
                                 <p id="vote-msg" class="text-center text-xs text-slate-500">Click a star to vote</p>
                             </div>
@@ -225,12 +139,15 @@
 
     <script>
         // --- CONFIGURATION ---
+        // REPLACE THIS WITH YOUR DEPLOYED WORKER URL
+        const WORKER_URL = "https://tu-worker.tu-subdominio.workers.dev";
+        
         const PROXY = "https://api.allorigins.win/raw?url=";
         const API_SCRATCH = "https://api.scratch.mit.edu/explore/projects?limit=32&offset=0&language=es&mode=trending&q=*";
 
         let currentProject = null;
+        let sessionToken = null;
         let currentUser = null;
-        let voteUnsubscribe = null;
 
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', () => {
@@ -238,9 +155,27 @@
             fetchProjects();
         });
 
-        // --- AUTH (SIMULATED FOR USERNAME, FIREBASE FOR DB) ---
+        // --- AUTH LOGIC (Using Worker) ---
         function checkAuth() {
-            currentUser = localStorage.getItem('scratch_user');
+            // Check for URL params returned from Worker redirect
+            const params = new URLSearchParams(window.location.search);
+            const tokenParam = params.get('token');
+            const userParam = params.get('username');
+
+            if (tokenParam && userParam) {
+                // Save session
+                localStorage.setItem('scratch_session', tokenParam);
+                localStorage.setItem('scratch_user', userParam);
+                // Clean URL
+                window.history.replaceState({}, document.title, "/");
+                sessionToken = tokenParam;
+                currentUser = userParam;
+            } else {
+                // Load from storage
+                sessionToken = localStorage.getItem('scratch_session');
+                currentUser = localStorage.getItem('scratch_user');
+            }
+
             updateAuthUI();
         }
 
@@ -250,7 +185,7 @@
             const voteArea = document.getElementById('vote-area');
             const loginWarn = document.getElementById('login-warning');
 
-            if (currentUser) {
+            if (sessionToken && currentUser) {
                 btnLogin.classList.add('hidden');
                 userInfo.classList.remove('hidden');
                 document.getElementById('username-display').textContent = currentUser;
@@ -266,18 +201,14 @@
             }
         }
 
-        // Simulates a login (since we can't do real OAuth redirects easily without backend in this snippet)
-        function fakeLogin() {
-            const username = prompt("Enter your Scratch Username to simulate login:");
-            if(username) {
-                localStorage.setItem('scratch_user', username);
-                checkAuth();
-            }
+        function loginWithWorker() {
+            // Redirect to Cloudflare Worker to handle Scratch Auth
+            window.location.href = `${WORKER_URL}/auth/login`;
         }
 
         function logout() {
+            localStorage.removeItem('scratch_session');
             localStorage.removeItem('scratch_user');
-            checkAuth();
             location.reload();
         }
 
@@ -325,7 +256,6 @@
         // --- MODAL & LOGIC ---
         function openModal(p) {
             currentProject = p;
-            window.currentProjectId = p.id; // Expose for module script
             
             const modal = document.getElementById('project-modal');
             
@@ -342,24 +272,70 @@
             document.getElementById('stat-loves').textContent = formatNum(p.stats.loves);
 
             // Reset Rating UI
-            updateRatingDisplay(0, 0); // Reset to 0 before loading
+            updateRatingDisplay(0, 0); 
             resetStars();
 
-            // Connect to Firebase listener if available
-            if(window.listenToVotes) {
-                if(voteUnsubscribe) voteUnsubscribe(); // Stop listening to previous project
-                voteUnsubscribe = window.listenToVotes(p.id);
-            }
+            // Fetch Real Stats from Worker
+            fetchRealStats(p.id);
 
             modal.classList.remove('hidden');
         }
 
-        // Update the circular progress and text based on average
-        window.updateRatingDisplay = (totalStars, count) => {
-            const average = count === 0 ? 0 : (totalStars / count).toFixed(1);
+        // --- WORKER INTERACTION ---
+        
+        async function fetchRealStats(projectId) {
+            try {
+                const res = await fetch(`${WORKER_URL}/stats?id=${projectId}`);
+                if(!res.ok) throw new Error("Stats fetch failed");
+                const data = await res.json();
+                
+                // data format: { average: "4.5", count: 10 }
+                updateRatingDisplay(Number(data.average), Number(data.count));
+            } catch (e) {
+                console.warn("Could not fetch real stats:", e);
+            }
+        }
+
+        async function rateProject(rating) {
+            if (!sessionToken) return alert("Please login first.");
+            
+            // Optimistic UI Update
+            updateStarsUI(rating);
+            const msg = document.getElementById('vote-msg');
+            msg.textContent = "Saving vote...";
+
+            try {
+                const res = await fetch(`${WORKER_URL}/vote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionToken: sessionToken,
+                        projectId: currentProject.id,
+                        rating: rating
+                    })
+                });
+
+                if (res.ok) {
+                    msg.textContent = "Vote saved!";
+                    msg.className = "text-center text-xs text-green-400 mt-2";
+                    // Refresh stats to get accurate average
+                    setTimeout(() => fetchRealStats(currentProject.id), 500);
+                } else {
+                    throw new Error("Worker rejected vote");
+                }
+            } catch (e) {
+                console.error(e);
+                msg.textContent = "Error saving vote.";
+                msg.className = "text-center text-xs text-red-400 mt-2";
+            }
+        }
+
+        // --- UI HELPERS ---
+        
+        function updateRatingDisplay(average, count) {
             const percentage = (average / 5) * 100;
             
-            document.getElementById('rating-text').textContent = average;
+            document.getElementById('rating-text').textContent = average.toFixed(1);
             document.getElementById('vote-count').textContent = count;
             
             // Circle Progress
@@ -367,7 +343,7 @@
             const offset = 226 - (226 * percentage) / 100;
             circle.style.strokeDashoffset = offset;
 
-            // Star icons display (small ones)
+            // Star icons display (summary)
             const starsDisplay = document.getElementById('stars-display');
             let starsHTML = '';
             for(let i=1; i<=5; i++) {
@@ -377,8 +353,7 @@
             starsDisplay.innerHTML = starsHTML;
         }
 
-        // UI Interactions for Voting
-        window.hoverStars = (num) => {
+        function hoverStars(num) {
             for(let i=1; i<=5; i++) {
                 const s = document.getElementById(`s${i}`);
                 if(i <= num) s.classList.add('text-yellow-400');
@@ -386,13 +361,13 @@
             }
         }
 
-        window.resetStars = () => {
+        function resetStars() {
             for(let i=1; i<=5; i++) {
                 document.getElementById(`s${i}`).classList.remove('text-yellow-400');
             }
         }
 
-        window.updateStarsUI = (votedNum) => {
+        function updateStarsUI(votedNum) {
              for(let i=1; i<=5; i++) {
                 const s = document.getElementById(`s${i}`);
                 if(i <= votedNum) s.classList.add('text-yellow-400');
@@ -403,7 +378,6 @@
         function closeModal() {
             document.getElementById('project-modal').classList.add('hidden');
             document.getElementById('modal-iframe').src = "";
-            if(voteUnsubscribe) voteUnsubscribe();
         }
 
         function formatNum(n) {
