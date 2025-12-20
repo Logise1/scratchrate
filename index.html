@@ -454,7 +454,7 @@
             sortedCreators.forEach((c, index) => {
                 const score = (c.totalScore / c.projects).toFixed(1);
                 list.innerHTML += `
-                    <div class="creator-card min-w-[120px] bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2 cursor-pointer relative" onclick="handleSearch({preventDefault:()=>{}}); toggleLoading(true); fetchProjects(API_SEARCH_BASE + encodeURIComponent('${c.username}'))">
+                    <div class="creator-card min-w-[120px] bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2 cursor-pointer relative" onclick="filterByCreator('${escapeHtml(c.username)}')">
                         <div class="absolute top-1 left-1 text-[10px] font-bold text-slate-500">#${index+1}</div>
                         <img src="https://cdn2.scratch.mit.edu/get_image/user/${c.id}_60x60.png" class="w-12 h-12 rounded-full border-2 border-slate-600">
                         <div class="text-center">
@@ -463,6 +463,12 @@
                         </div>
                     </div>`;
             });
+        }
+
+        // New helper to handle creator click correctly
+        function filterByCreator(username) {
+            document.getElementById('search-input').value = username;
+            handleSearch({ preventDefault: () => {} });
         }
 
         function sortGrid(mode) {
