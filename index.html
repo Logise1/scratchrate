@@ -102,7 +102,6 @@
                                 <div>
                                     <div class="text-2xl font-bold text-white mb-1" id="score-display">???</div>
                                     <div class="text-xs text-slate-500"><span id="vote-count" class="text-slate-300 font-bold">0</span> votes</div>
-                                    <div id="threshold-warning" class="text-[10px] text-orange-400 mt-1 hidden">(Hidden until 20 votes)</div>
                                 </div>
                             </div>
                         </div>
@@ -203,20 +202,12 @@
                 card.onclick = () => openModal(p);
                 const img = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
                 
-                // Check stats for badge
-                const stats = projectsStatsCache[p.id] || { count: 0, average: 0 };
-                let badgeHtml = '';
-                if(stats.count >= 20) {
-                    let color = stats.average >= 8 ? 'text-green-400' : (stats.average >= 5 ? 'text-yellow-400' : 'text-red-400');
-                    badgeHtml = `<div class="absolute top-2 left-2 bg-black/80 px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 backdrop-blur-sm border border-slate-600 ${color}">
-                        <i class="fa-solid fa-star text-[10px]"></i><span>${Number(stats.average).toFixed(1)}</span></div>`;
-                }
+                // Badge removed from thumbnails as requested
 
                 card.innerHTML = `
                     <div class="relative w-full aspect-[4/3] bg-black">
                         <img src="${img}" class="w-full h-full object-cover" loading="lazy">
                         <div class="absolute bottom-2 right-2 bg-black/60 px-2 rounded text-xs text-white backdrop-blur-sm"><i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}</div>
-                        ${badgeHtml}
                     </div>
                     <div class="p-3 flex-grow">
                         <h3 class="font-bold text-white truncate text-sm mb-1">${p.title}</h3>
@@ -279,7 +270,6 @@
             const circle = document.getElementById('enjoyment-circle');
             const scoreDisplay = document.getElementById('score-display');
             const ratingText = document.getElementById('rating-text');
-            const warning = document.getElementById('threshold-warning');
             
             document.getElementById('vote-count').textContent = count;
             
@@ -287,28 +277,19 @@
                 circle.style.strokeDashoffset = 226;
                 scoreDisplay.textContent = "...";
                 ratingText.textContent = "?";
-                warning.classList.add('hidden');
                 return;
             }
 
-            if(count < 20) {
-                scoreDisplay.textContent = "Hidden";
-                ratingText.textContent = "?";
-                circle.style.strokeDashoffset = 226;
-                warning.classList.remove('hidden');
-                warning.textContent = `(Hidden until 20 votes. Current: ${count})`;
-            } else {
-                warning.classList.add('hidden');
-                scoreDisplay.textContent = avg.toFixed(1) + " / 10";
-                ratingText.textContent = avg.toFixed(1);
-                
-                const pct = (avg / 10) * 100;
-                circle.style.strokeDashoffset = 226 - (226 * pct) / 100;
-                
-                if(avg >= 8) circle.setAttribute('stroke', '#4ade80');
-                else if(avg >= 5) circle.setAttribute('stroke', '#facc15');
-                else circle.setAttribute('stroke', '#f87171');
-            }
+            // Always show score now (no hidden threshold)
+            scoreDisplay.textContent = avg.toFixed(1) + " / 10";
+            ratingText.textContent = avg.toFixed(1);
+            
+            const pct = (avg / 10) * 100;
+            circle.style.strokeDashoffset = 226 - (226 * pct) / 100;
+            
+            if(avg >= 8) circle.setAttribute('stroke', '#4ade80');
+            else if(avg >= 5) circle.setAttribute('stroke', '#facc15');
+            else circle.setAttribute('stroke', '#f87171');
         }
 
         async function rateProject(rating) {
