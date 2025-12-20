@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scratch Trending Explorer</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -19,22 +17,28 @@
         .scratch-text { color: #f97316; }
         .loader { border: 4px solid #1e293b; border-top: 4px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .star-btn { cursor: pointer; transition: color 0.1s, transform 0.1s; font-size: 1.25rem; }
+        
+        /* Stars Interaction */
+        .star-btn { cursor: pointer; transition: color 0.1s, transform 0.1s; font-size: 1.5rem; }
         .star-btn:hover { transform: scale(1.2); }
+        
+        /* View Transition */
+        .view-section { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .view-section.active { display: block; opacity: 1; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Header -->
-    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-lg">
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50 shadow-lg">
         <div class="container mx-auto px-4 py-4">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="navigateHome()">
                     <i class="fa-solid fa-cat text-3xl scratch-text"></i>
                     <h1 class="text-2xl font-bold tracking-tight hidden sm:block">Scratch <span class="scratch-text">Explorer</span></h1>
                 </div>
-                <!-- Search Bar -->
-                <div class="flex-grow max-w-lg w-full relative">
+                <!-- Search -->
+                <div id="search-container" class="flex-grow max-w-lg w-full relative">
                     <form onsubmit="handleSearch(event)" class="flex gap-2">
                         <input type="text" id="search-input" placeholder="Search projects..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:border-orange-500 transition">
                         <button type="submit" class="bg-slate-700 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition"><i class="fa-solid fa-magnifying-glass"></i></button>
@@ -52,94 +56,396 @@
         </div>
     </header>
 
-    <!-- Filters -->
-    <div class="bg-slate-900 border-b border-slate-800 py-3">
-        <div class="container mx-auto px-4 flex gap-4 overflow-x-auto whitespace-nowrap custom-scrollbar">
-            <span class="text-slate-400 text-sm font-bold uppercase self-center mr-2"><i class="fa-solid fa-arrow-down-short-wide mr-1"></i> Sort By:</span>
-            <button onclick="sortGrid('default')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition active-sort" id="sort-default">Trending</button>
-            <button onclick="sortGrid('best')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-green-900 text-xs text-green-400 border border-slate-700 transition" id="sort-best">Best Rated</button>
-            <button onclick="sortGrid('worst')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-red-900 text-xs text-red-400 border border-slate-700 transition" id="sort-worst">Worst Rated</button>
-            <button onclick="sortGrid('most-voted')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-blue-900 text-xs text-blue-400 border border-slate-700 transition" id="sort-most-voted">Most Voted</button>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-8">
-        <div id="loading" class="flex flex-col items-center justify-center py-20">
-            <div class="loader mb-4"></div>
-            <p class="text-slate-400 animate-pulse">Loading Projects from Scratch via Worker...</p>
-        </div>
-        <div id="projects-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 hidden"></div>
-        <p id="no-results" class="hidden text-center text-slate-500 mt-10">No projects found.</p>
-    </main>
-
-    <!-- Modal -->
-    <div id="project-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-        <div class="bg-slate-900 rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col border border-slate-700">
-            <div class="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900">
-                <h2 class="text-lg font-semibold text-slate-300 truncate pr-4" id="modal-title-top">Viewer</h2>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-2xl"></i></button>
+    <!-- VIEWS CONTAINER -->
+    <main class="flex-grow container mx-auto px-4 py-8 relative">
+        
+        <!-- 1. HOME VIEW (Grid) -->
+        <div id="home-view" class="view-section active">
+            <!-- Filters -->
+            <div class="mb-6 flex gap-4 overflow-x-auto whitespace-nowrap custom-scrollbar pb-2">
+                <span class="text-slate-400 text-sm font-bold uppercase self-center mr-2"><i class="fa-solid fa-arrow-down-short-wide mr-1"></i> Sort By:</span>
+                <button onclick="sortGrid('default')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition active-sort" id="sort-default">Trending</button>
+                <button onclick="sortGrid('best')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-green-900 text-xs text-green-400 border border-slate-700 transition" id="sort-best">Best Rated</button>
+                <button onclick="sortGrid('worst')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-red-900 text-xs text-red-400 border border-slate-700 transition" id="sort-worst">Worst Rated</button>
+                <button onclick="sortGrid('most-voted')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-blue-900 text-xs text-blue-400 border border-slate-700 transition" id="sort-most-voted">Most Voted</button>
             </div>
-            <div class="flex-grow overflow-y-auto p-0 lg:p-6">
-                <div class="flex flex-col lg:flex-row gap-6">
-                    <div class="w-full lg:w-2/3 flex flex-col gap-4">
-                        <div class="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-lg border border-slate-800 relative">
-                            <iframe id="modal-iframe" class="w-full h-full" src="" allowtransparency="true" allowfullscreen></iframe>
+
+            <div id="loading" class="flex flex-col items-center justify-center py-20">
+                <div class="loader mb-4"></div>
+                <p class="text-slate-400 animate-pulse">Loading Projects...</p>
+            </div>
+            
+            <div id="projects-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 hidden"></div>
+            <p id="no-results" class="hidden text-center text-slate-500 mt-10">No projects found.</p>
+        </div>
+
+        <!-- 2. PROJECT VIEW (Details Page) -->
+        <div id="project-view" class="view-section">
+            <!-- Back Button -->
+            <button onclick="navigateHome()" class="mb-4 text-slate-400 hover:text-white flex items-center gap-2 transition">
+                <i class="fa-solid fa-arrow-left"></i> Back to Trending
+            </button>
+
+            <div class="flex flex-col lg:flex-row gap-8">
+                
+                <!-- Left Column: Game & Info -->
+                <div class="w-full lg:w-2/3 flex flex-col gap-6">
+                    <!-- Iframe -->
+                    <div class="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-700 relative">
+                        <iframe id="page-iframe" class="w-full h-full" src="" allowtransparency="true" allowfullscreen allow="autoplay; microphone; camera"></iframe>
+                    </div>
+                    
+                    <!-- Header Info -->
+                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 id="page-title" class="text-3xl font-bold text-white mb-2">Project Title</h1>
+                                <p class="text-slate-400">Created by <span id="page-author" class="text-orange-400 font-bold cursor-pointer">User</span></p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-400 font-mono" id="page-id">ID: 000</span>
+                            </div>
                         </div>
-                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
-                            <h1 id="modal-title" class="text-3xl font-bold text-white mb-1">...</h1>
-                            <p class="text-slate-400">by <span id="modal-author" class="text-orange-400 font-bold">...</span></p>
+                        
+                        <!-- Description -->
+                        <div class="mt-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
+                            <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Instructions & Notes</h3>
+                            <p id="page-desc" class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">...</p>
                         </div>
                     </div>
-                    <div class="w-full lg:w-1/3 flex flex-col gap-4">
-                        <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 shadow-lg relative overflow-hidden">
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">SCORE</h3>
-                            <div class="flex items-center gap-4 mb-4">
-                                <div class="relative w-20 h-20 flex items-center justify-center">
-                                    <svg class="transform -rotate-90 w-20 h-20"><circle cx="40" cy="40" r="36" stroke="#334155" stroke-width="8" fill="transparent" /><circle id="enjoyment-circle" cx="40" cy="40" r="36" stroke="#fbbf24" stroke-width="8" fill="transparent" stroke-dasharray="226" stroke-dashoffset="226" /></svg>
-                                    <span id="rating-text" class="absolute text-xl font-bold text-white">?</span>
-                                </div>
-                                <div>
-                                    <div class="text-2xl font-bold text-white mb-1" id="score-display">???</div>
-                                    <div class="text-xs text-slate-500"><span id="vote-count" class="text-slate-300 font-bold">0</span> votes</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">YOUR VOTE (1-10)</h3>
-                            <div id="vote-area" class="opacity-50 pointer-events-none transition-opacity">
-                                <div class="grid grid-cols-10 gap-0.5 mb-2" id="stars-container"></div>
-                                <div class="flex justify-between text-[10px] text-slate-500 uppercase font-bold px-1"><span>Worst</span><span>Best</span></div>
-                                <p id="vote-msg" class="text-center text-xs text-slate-400 mt-2 h-4">Select rating</p>
-                            </div>
-                            <p id="login-warning" class="text-center text-xs text-orange-400 mt-3">Please login to vote.</p>
-                        </div>
-                        <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 flex-grow">
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-2">Info</h3>
-                            <div class="overflow-y-auto max-h-40 custom-scrollbar pr-2"><p id="modal-desc" class="text-sm text-slate-300 whitespace-pre-wrap">...</p></div>
+
+                    <!-- Reviews List -->
+                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                        <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-comments text-slate-400"></i> Reviews
+                        </h2>
+                        <div id="reviews-list" class="flex flex-col gap-4">
+                            <!-- Reviews injected here -->
+                            <p class="text-slate-500 italic">No reviews yet. Be the first!</p>
                         </div>
                     </div>
                 </div>
+
+                <!-- Right Column: Stats & Voting -->
+                <div class="w-full lg:w-1/3 flex flex-col gap-6">
+                    
+                    <!-- Score Card -->
+                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-5"><i class="fa-solid fa-star text-8xl"></i></div>
+                        <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-4 tracking-wider">COMMUNITY SCORE</h3>
+                        
+                        <div class="flex items-center gap-6">
+                            <div class="relative w-24 h-24 flex items-center justify-center">
+                                <svg class="transform -rotate-90 w-24 h-24"><circle cx="48" cy="48" r="40" stroke="#334155" stroke-width="8" fill="transparent" /><circle id="page-circle" cx="48" cy="48" r="40" stroke="#fbbf24" stroke-width="8" fill="transparent" stroke-dasharray="251" stroke-dashoffset="251" /></svg>
+                                <span id="page-rating-text" class="absolute text-2xl font-bold text-white">?</span>
+                            </div>
+                            <div>
+                                <div class="text-4xl font-bold text-white mb-1" id="page-score-display">--</div>
+                                <div class="text-sm text-slate-400"><span id="page-vote-count" class="font-bold text-white">0</span> votes</div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-700">
+                            <div class="text-center bg-slate-900/50 p-2 rounded">
+                                <i class="fa-regular fa-eye text-blue-400"></i>
+                                <div class="font-bold text-white" id="page-views">0</div>
+                                <div class="text-[10px] text-slate-500 uppercase">Views</div>
+                            </div>
+                            <div class="text-center bg-slate-900/50 p-2 rounded">
+                                <i class="fa-regular fa-heart text-pink-500"></i>
+                                <div class="font-bold text-white" id="page-loves">0</div>
+                                <div class="text-[10px] text-slate-500 uppercase">Loves</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voting Panel -->
+                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                        <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-4 tracking-wider">WRITE A REVIEW</h3>
+                        
+                        <div id="vote-area" class="opacity-50 pointer-events-none transition-opacity">
+                            <!-- Stars -->
+                            <div class="flex justify-between mb-2 px-1">
+                                <span class="text-[10px] text-slate-500 font-bold">WORST</span>
+                                <span class="text-[10px] text-slate-500 font-bold">BEST</span>
+                            </div>
+                            <div class="grid grid-cols-10 gap-1 mb-4" id="stars-container"></div>
+                            <p id="vote-msg" class="text-center text-sm font-bold text-slate-300 mb-4 h-5">Select a rating</p>
+                            
+                            <!-- Comment Input -->
+                            <textarea id="review-comment" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white placeholder-slate-600 focus:border-orange-500 focus:outline-none transition mb-3" rows="3" placeholder="Write your opinion here (optional)..."></textarea>
+                            
+                            <!-- Submit Button -->
+                            <button onclick="submitReview()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg transition">
+                                Post Review
+                            </button>
+                        </div>
+                        
+                        <div id="login-warning" class="bg-slate-900/50 p-4 rounded-lg text-center border border-slate-700">
+                            <p class="text-orange-400 text-sm mb-2">Login with Scratch to review</p>
+                            <button onclick="loginWithWorker()" class="text-xs underline text-slate-400 hover:text-white">Login now</button>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
-    </div>
+
+    </main>
 
     <script>
-        // CONFIG
-        const WORKER_URL = "https://scratchrate.logise1123.workers.dev"; // PON TU URL AQUI
+        // --- CONFIGURATION ---
+        const WORKER_URL = "https://scratchrate.logise1123.workers.dev"; // CHANGE THIS
+        const PROXY = "https://api.allorigins.win/raw?url=";
         const API_TRENDING = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=trending&q=*";
-        const API_SEARCH_BASE = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=popular&q="; 
+        const API_SEARCH_BASE = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=popular&q=";
 
-        let currentProject = null, sessionToken = null, currentUser = null;
-        let projectsData = [], projectsStatsCache = {};
+        // --- STATE ---
+        let currentProject = null;
+        let sessionToken = null;
+        let currentUser = null;
+        let projectsData = [];
+        let projectsStatsCache = {}; // { id: { average, count, reviews: [] } }
+        let currentRating = 0; // Temporary storage for voting
 
+        // --- INIT ---
         window.addEventListener('DOMContentLoaded', () => {
             generateStarsUI();
             checkAuth();
-            fetchProjects();
+            handleRouting(); // Check URL hash on load
+            
+            // If home, fetch initial
+            if(!location.hash.startsWith('#project-')) fetchProjects();
         });
 
-        // 1. PROXY REQUEST
+        window.addEventListener('hashchange', handleRouting);
+
+        // --- ROUTING (SPA) ---
+        function handleRouting() {
+            const hash = location.hash;
+            if (hash.startsWith('#project-')) {
+                const id = hash.replace('#project-', '');
+                showProjectPage(id);
+            } else {
+                showHomePage();
+            }
+        }
+
+        function navigateHome() {
+            window.location.hash = ""; // Triggers handleRouting -> showHomePage
+        }
+
+        function showHomePage() {
+            document.getElementById('home-view').classList.add('active');
+            document.getElementById('project-view').classList.remove('active');
+            document.getElementById('search-container').classList.remove('hidden');
+            
+            // Stop iframe to stop audio
+            document.getElementById('page-iframe').src = "";
+            
+            if(projectsData.length === 0) fetchProjects();
+        }
+
+        async function showProjectPage(id) {
+            document.getElementById('home-view').classList.remove('active');
+            document.getElementById('project-view').classList.add('active');
+            document.getElementById('search-container').classList.add('hidden'); // Clean header
+            
+            // Find project data (from cache or fetch if direct link)
+            let p = projectsData.find(x => x.id == id);
+            
+            // If direct access or not found in trending, fetch individual
+            if (!p) {
+                try {
+                    const res = await fetch(`${WORKER_URL}/proxy?url=${encodeURIComponent(`https://api.scratch.mit.edu/projects/${id}`)}`);
+                    if(!res.ok) throw new Error("Not found");
+                    p = await res.json();
+                    // Normalize data structure if needed (Scratch API individual vs grid differs slightly)
+                    if(!p.author) p.author = { username: p.username || "Unknown" }; // Polyfill
+                } catch(e) {
+                    alert("Project not found or API error.");
+                    navigateHome();
+                    return;
+                }
+            }
+            
+            currentProject = p;
+            renderProjectDetails(p);
+        }
+
+        // --- RENDER PROJECT ---
+        function renderProjectDetails(p) {
+            // Basic Info
+            document.getElementById('page-title').textContent = p.title;
+            document.getElementById('page-author').textContent = p.author.username;
+            document.getElementById('page-id').textContent = `ID: ${p.id}`;
+            document.getElementById('page-desc').textContent = (p.instructions||"") + "\n\n" + (p.description||"");
+            document.getElementById('page-iframe').src = `https://scratch.mit.edu/projects/${p.id}/embed`;
+            document.getElementById('page-views').textContent = formatNum(p.stats.views);
+            document.getElementById('page-loves').textContent = formatNum(p.stats.loves);
+
+            // Reset Rating UI
+            updatePageRating(0, 0, true);
+            resetStars();
+            document.getElementById('review-comment').value = "";
+            document.getElementById('reviews-list').innerHTML = '<div class="loader mx-auto"></div>';
+
+            // Fetch Real Stats & Reviews
+            fetchProjectStatsAndReviews(p.id);
+        }
+
+        async function fetchProjectStatsAndReviews(id) {
+            try {
+                const res = await fetch(`${WORKER_URL}/stats?id=${id}`);
+                const data = await res.json(); // { average, count, reviews: [...] }
+                
+                projectsStatsCache[id] = data; // Update cache
+                updatePageRating(Number(data.average), Number(data.count));
+                renderReviews(data.reviews || []);
+            } catch(e) {
+                console.error(e);
+                document.getElementById('reviews-list').innerHTML = '<p class="text-red-400">Error loading reviews.</p>';
+            }
+        }
+
+        function renderReviews(reviews) {
+            const list = document.getElementById('reviews-list');
+            list.innerHTML = '';
+            
+            if (reviews.length === 0) {
+                list.innerHTML = '<p class="text-slate-500 italic text-center py-4">No reviews yet. Be the first!</p>';
+                return;
+            }
+
+            reviews.forEach(r => {
+                // Color for rating badge
+                let colorClass = r.rating >= 8 ? 'bg-green-900 text-green-300 border-green-700' : (r.rating >= 5 ? 'bg-yellow-900 text-yellow-300 border-yellow-700' : 'bg-red-900 text-red-300 border-red-700');
+                
+                const item = document.createElement('div');
+                item.className = "bg-slate-900 p-4 rounded-lg border border-slate-700 flex flex-col gap-2";
+                item.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-white">${r.username}</span>
+                            <span class="text-xs text-slate-500">${new Date(r.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        <div class="${colorClass} px-2 py-0.5 rounded text-xs font-bold border flex items-center gap-1">
+                            <i class="fa-solid fa-star text-[10px]"></i> ${r.rating}
+                        </div>
+                    </div>
+                    ${r.comment ? `<p class="text-slate-300 text-sm mt-1">${escapeHtml(r.comment)}</p>` : ''}
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function updatePageRating(avg, count, reset=false) {
+            const circle = document.getElementById('page-circle');
+            const scoreDisplay = document.getElementById('page-score-display');
+            const ratingText = document.getElementById('page-rating-text');
+            document.getElementById('page-vote-count').textContent = count;
+
+            if(reset) {
+                circle.style.strokeDashoffset = 251; // 251 is circ of r=40
+                scoreDisplay.textContent = "--";
+                ratingText.textContent = "?";
+                return;
+            }
+
+            scoreDisplay.textContent = avg.toFixed(1) + " / 10";
+            ratingText.textContent = avg.toFixed(1);
+            
+            const pct = (avg / 10) * 100;
+            const offset = 251 - (251 * pct) / 100;
+            circle.style.strokeDashoffset = offset;
+            
+            if(avg >= 8) circle.setAttribute('stroke', '#4ade80');
+            else if(avg >= 5) circle.setAttribute('stroke', '#facc15');
+            else circle.setAttribute('stroke', '#f87171');
+        }
+
+        // --- VOTING SYSTEM ---
+        function generateStarsUI() {
+            const c = document.getElementById('stars-container');
+            c.innerHTML = '';
+            for(let i=1; i<=10; i++) {
+                const b = document.createElement('i');
+                b.className = `star-btn fa-solid fa-star text-slate-700 text-xl flex justify-center`;
+                b.id = `s${i}`;
+                b.onclick = () => { currentRating = i; highlightStars(i); document.getElementById('vote-msg').textContent = `Rating: ${i}/10`; };
+                b.onmouseover = () => { highlightStars(i); document.getElementById('vote-msg').textContent = `${i}/10`; };
+                b.onmouseout = () => { if(currentRating===0) resetStars(); else highlightStars(currentRating); };
+                c.appendChild(b);
+            }
+        }
+
+        function highlightStars(num) {
+            for(let j=1; j<=10; j++) {
+                const s = document.getElementById(`s${j}`);
+                s.classList.remove('text-slate-700', 'text-yellow-400', 'text-green-400', 'text-red-400');
+                if (j <= num) {
+                    if (num <= 4) s.classList.add('text-red-400');
+                    else if (num <= 7) s.classList.add('text-yellow-400');
+                    else s.classList.add('text-green-400');
+                } else {
+                    s.classList.add('text-slate-700');
+                }
+            }
+        }
+
+        function resetStars() {
+            document.getElementById('vote-msg').textContent = "Select rating";
+            for(let j=1; j<=10; j++) document.getElementById(`s${j}`).className = `star-btn fa-solid fa-star text-slate-700 text-xl flex justify-center`;
+        }
+
+        async function submitReview() {
+            if (!sessionToken) return alert("Login required");
+            if (currentRating === 0) return alert("Please select a star rating first.");
+            
+            const comment = document.getElementById('review-comment').value.trim();
+            const btn = document.querySelector('#vote-area button');
+            const originalText = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = "Posting...";
+
+            try {
+                const res = await fetch(`${WORKER_URL}/vote`, {
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        sessionToken, 
+                        projectId: currentProject.id, 
+                        rating: currentRating,
+                        comment: comment 
+                    })
+                });
+
+                if(res.ok) {
+                    // Reload details to show new review
+                    fetchProjectStatsAndReviews(currentProject.id);
+                    // Also update grid cache
+                    fetchCardStats(currentProject.id);
+                    
+                    document.getElementById('review-comment').value = ""; // Clear
+                    btn.textContent = "Review Posted!";
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.textContent = "Post Review";
+                    }, 2000);
+                } else {
+                    throw new Error("Failed");
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Error posting review. Try again.");
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // --- GRID & FETCHING (Original Logic Adapted) ---
         async function fetchWithProxy(targetUrl) {
             const proxyUrl = `${WORKER_URL}/proxy?url=${encodeURIComponent(targetUrl)}`;
             const res = await fetch(proxyUrl);
@@ -147,11 +453,11 @@
             return res.json();
         }
 
-        // 2. SEARCH & FETCH
         function handleSearch(e) {
             e.preventDefault();
             const query = document.getElementById('search-input').value.trim();
             if(!query) return;
+            navigateHome();
             toggleLoading(true);
             fetchProjects(API_SEARCH_BASE + encodeURIComponent(query));
         }
@@ -165,32 +471,38 @@
                     return;
                 }
                 projectsData = data;
-                projectsStatsCache = {}; // Clear cache
                 
-                // BATCH FETCH STATS
+                // Batch stats
                 const ids = data.map(p => p.id);
-                await fetchBatchStats(ids);
+                fetchBatchStats(ids);
 
                 renderGrid(projectsData);
                 toggleLoading(false);
             } catch (e) {
                 console.error(e);
-                document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading Scratch API via Worker Proxy.</p>";
+                document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading Scratch API.</p>";
             }
         }
 
         async function fetchBatchStats(ids) {
             try {
-                const res = await fetch(`${WORKER_URL}/stats-batch`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ids })
-                });
+                const res = await fetch(`${WORKER_URL}/stats-batch`, { method: 'POST', body: JSON.stringify({ ids }) });
                 if(res.ok) {
                     const batchData = await res.json();
                     Object.assign(projectsStatsCache, batchData);
+                    renderGrid(projectsData); // Re-render to show badges
                 }
-            } catch(e) { console.error("Batch stats failed", e); }
+            } catch(e) {}
+        }
+
+        async function fetchCardStats(id) {
+             // For single card update
+             try {
+                const res = await fetch(`${WORKER_URL}/stats?id=${id}`);
+                const data = await res.json();
+                projectsStatsCache[id] = data;
+                // Ideally update just that DOM element, but re-render is safe here
+             } catch(e) {}
         }
 
         function renderGrid(projects) {
@@ -199,10 +511,10 @@
             projects.forEach(p => {
                 const card = document.createElement('div');
                 card.className = "project-card bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative flex flex-col";
-                card.onclick = () => openModal(p);
+                card.onclick = () => window.location.hash = `project-${p.id}`; // NAVIGATE
                 const img = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
                 
-                // Badge Logic: Show only if votes >= 5
+                // Badge Logic
                 const stats = projectsStatsCache[p.id] || { count: 0, average: 0 };
                 let badgeHtml = '';
                 if(stats.count >= 5) {
@@ -226,20 +538,12 @@
             });
         }
 
-        // 3. SORTING & FILTERING (Hidden if no stats)
         function sortGrid(mode) {
             document.querySelectorAll('.sort-btn').forEach(b => b.classList.replace('bg-slate-600', 'bg-slate-800'));
             document.getElementById(`sort-${mode}`).classList.replace('bg-slate-800', 'bg-slate-600');
-
             let sorted = [...projectsData];
-
             if (mode !== 'default') {
-                // FILTER: Only show projects with votes
-                sorted = sorted.filter(p => {
-                    const s = projectsStatsCache[p.id];
-                    return s && s.count > 0;
-                });
-
+                sorted = sorted.filter(p => (projectsStatsCache[p.id]?.count || 0) > 0);
                 if (mode === 'best') sorted.sort((a, b) => (projectsStatsCache[b.id]?.average || 0) - (projectsStatsCache[a.id]?.average || 0));
                 else if (mode === 'worst') sorted.sort((a, b) => (projectsStatsCache[a.id]?.average || 0) - (projectsStatsCache[b.id]?.average || 0));
                 else if (mode === 'most-voted') sorted.sort((a, b) => (projectsStatsCache[b.id]?.count || 0) - (projectsStatsCache[a.id]?.count || 0));
@@ -247,115 +551,7 @@
             renderGrid(sorted);
         }
 
-        // 4. MODAL & VOTING
-        function openModal(p) {
-            currentProject = p;
-            document.getElementById('project-modal').classList.remove('hidden');
-            
-            // Info
-            document.getElementById('modal-title').textContent = p.title;
-            document.getElementById('modal-title-top').textContent = p.title;
-            document.getElementById('modal-author').textContent = p.author.username;
-            document.getElementById('modal-desc').textContent = (p.instructions||"") + "\n\n" + (p.description||"");
-            document.getElementById('modal-iframe').src = `https://scratch.mit.edu/projects/${p.id}/embed`;
-
-            // Reset & Load Stats
-            updateRatingDisplay(0, 0, true);
-            resetStars();
-            
-            // If cached, show immediately
-            if(projectsStatsCache[p.id]) {
-                const c = projectsStatsCache[p.id];
-                updateRatingDisplay(c.average, c.count);
-            } else {
-                // Fetch individual if missing (rare with batch)
-                fetch(`${WORKER_URL}/stats?id=${p.id}`).then(r=>r.json()).then(d => {
-                    updateRatingDisplay(Number(d.average), Number(d.count));
-                });
-            }
-        }
-
-        function updateRatingDisplay(avg, count, reset) {
-            const circle = document.getElementById('enjoyment-circle');
-            const scoreDisplay = document.getElementById('score-display');
-            const ratingText = document.getElementById('rating-text');
-            
-            document.getElementById('vote-count').textContent = count;
-            
-            if(reset) {
-                circle.style.strokeDashoffset = 226;
-                scoreDisplay.textContent = "...";
-                ratingText.textContent = "?";
-                return;
-            }
-
-            // Always show score now (no hidden threshold)
-            scoreDisplay.textContent = avg.toFixed(1) + " / 10";
-            ratingText.textContent = avg.toFixed(1);
-            
-            const pct = (avg / 10) * 100;
-            circle.style.strokeDashoffset = 226 - (226 * pct) / 100;
-            
-            if(avg >= 8) circle.setAttribute('stroke', '#4ade80');
-            else if(avg >= 5) circle.setAttribute('stroke', '#facc15');
-            else circle.setAttribute('stroke', '#f87171');
-        }
-
-        async function rateProject(rating) {
-            if (!sessionToken) return alert("Login required");
-            document.getElementById('vote-msg').textContent = "Saving...";
-            
-            try {
-                const res = await fetch(`${WORKER_URL}/vote`, {
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ sessionToken, projectId: currentProject.id, rating })
-                });
-                if(res.ok) {
-                    document.getElementById('vote-msg').textContent = "Saved!";
-                    document.getElementById('vote-msg').classList.add('text-green-400');
-                    // Refresh stats
-                    const r = await fetch(`${WORKER_URL}/stats?id=${currentProject.id}`);
-                    const d = await r.json();
-                    projectsStatsCache[currentProject.id] = { average: Number(d.average), count: Number(d.count) };
-                    updateRatingDisplay(Number(d.average), Number(d.count));
-                }
-            } catch(e) { console.error(e); }
-        }
-
-        // UTILS
-        function generateStarsUI() {
-            const c = document.getElementById('stars-container');
-            c.innerHTML = '';
-            for(let i=1; i<=10; i++) {
-                const b = document.createElement('i');
-                b.className = `star-btn fa-solid fa-star text-slate-700`;
-                b.id = `s${i}`;
-                b.onclick = () => rateProject(i);
-                b.onmouseover = () => {
-                    document.getElementById('vote-msg').textContent = `${i}/10`;
-                    for(let j=1; j<=10; j++) document.getElementById(`s${j}`).classList.toggle('text-yellow-400', j<=i);
-                };
-                b.onmouseout = resetStars;
-                c.appendChild(b);
-            }
-        }
-        function resetStars() {
-            document.getElementById('vote-msg').textContent = "Select rating";
-            document.getElementById('vote-msg').classList.remove('text-green-400');
-            for(let i=1; i<=10; i++) document.getElementById(`s${i}`).classList.remove('text-yellow-400', 'text-slate-700');
-            for(let i=1; i<=10; i++) document.getElementById(`s${i}`).classList.add('text-slate-700');
-        }
-
-        function toggleLoading(show, empty=false) {
-            const l = document.getElementById('loading');
-            const g = document.getElementById('projects-grid');
-            const n = document.getElementById('no-results');
-            if(show) { l.classList.remove('hidden'); g.classList.add('hidden'); n.classList.add('hidden'); }
-            else { l.classList.add('hidden'); g.classList.toggle('hidden', empty); n.classList.toggle('hidden', !empty); }
-        }
-
-        // Auth & Misc
+        // --- AUTH & UTILS ---
         function checkAuth() {
             const p = new URLSearchParams(location.search);
             if(p.get('token')) {
@@ -375,8 +571,16 @@
         }
         function loginWithWorker() { location.href = `${WORKER_URL}/auth/login`; }
         function logout() { localStorage.clear(); location.reload(); }
-        function closeModal() { document.getElementById('project-modal').classList.add('hidden'); document.getElementById('modal-iframe').src=""; }
+        
+        function toggleLoading(show, empty=false) {
+            const l = document.getElementById('loading');
+            const g = document.getElementById('projects-grid');
+            const n = document.getElementById('no-results');
+            if(show) { l.classList.remove('hidden'); g.classList.add('hidden'); n.classList.add('hidden'); }
+            else { l.classList.add('hidden'); g.classList.toggle('hidden', empty); n.classList.toggle('hidden', !empty); }
+        }
         function formatNum(n) { return new Intl.NumberFormat('en-US', {notation:"compact"}).format(n); }
+        function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
     </script>
 </body>
 </html>
