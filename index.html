@@ -10,15 +10,12 @@
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
         
-        /* Smooth Fade Transitions */
         .view-section { display: none; opacity: 0; transition: opacity 0.4s ease-in-out; }
         .view-section.active { display: block; opacity: 1; }
 
-        /* Card Hover Effects */
         .project-card { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s; }
         .project-card:hover { transform: translateY(-6px); box-shadow: 0 12px 24px -8px rgba(249, 115, 22, 0.4); border-color: #f97316; }
         
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -28,11 +25,9 @@
         .loader { border: 4px solid #1e293b; border-top: 4px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Star Animation */
         .star-btn { cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
         .star-btn:hover { transform: scale(1.3) rotate(5deg); }
         
-        /* Glassmorphism Utilities */
         .glass-panel {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(12px);
@@ -54,18 +49,16 @@
                     <h1 class="text-xl font-bold tracking-tight text-slate-100">Scratch <span class="scratch-text">Rate</span></h1>
                 </div>
                 
-                <!-- Search -->
                 <div id="search-container" class="flex-grow max-w-lg w-full relative group">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-magnifying-glass text-slate-500 group-focus-within:text-orange-500 transition"></i>
                     </div>
                     <form onsubmit="handleSearch(event)">
-                        <input type="text" id="search-input" placeholder="Search projects, games, animations..." 
+                        <input type="text" id="search-input" placeholder="Search projects..." 
                             class="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition shadow-sm">
                     </form>
                 </div>
                 
-                <!-- Auth -->
                 <div id="auth-section" class="flex items-center gap-3 min-w-fit">
                     <button id="btn-login" onclick="loginWithWorker()" class="bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2 px-5 rounded-xl transition shadow-lg shadow-orange-900/20 flex items-center gap-2 text-sm">
                         <i class="fa-solid fa-right-to-bracket"></i> Login
@@ -80,12 +73,10 @@
         </div>
     </header>
 
-    <!-- MAIN CONTAINER -->
     <main class="flex-grow relative">
         
         <!-- 1. HOME VIEW -->
         <div id="home-view" class="view-section active container mx-auto px-4 py-8">
-            <!-- Filter Pills -->
             <div class="mb-8 flex gap-3 overflow-x-auto whitespace-nowrap custom-scrollbar pb-2 items-center">
                 <span class="text-slate-500 text-xs font-bold uppercase tracking-wider mr-2">Sort By</span>
                 <button onclick="sortGrid('default')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-slate-300 border border-slate-700 transition active-sort hover:shadow-lg" id="sort-default">Trending</button>
@@ -107,15 +98,12 @@
             </div>
         </div>
 
-        <!-- 2. PROJECT VIEW (Immersive) -->
+        <!-- 2. PROJECT VIEW -->
         <div id="project-view" class="view-section relative min-h-screen pb-20">
-            
-            <!-- Dynamic Backdrop -->
             <div id="project-background" class="absolute inset-0 bg-cover bg-center opacity-20 blur-[80px] pointer-events-none transition-all duration-1000 z-0"></div>
             <div class="absolute inset-0 bg-gradient-to-b from-[#0f172a]/80 via-[#0f172a]/95 to-[#0f172a] pointer-events-none z-0"></div>
 
             <div class="relative container mx-auto px-4 py-6 z-10">
-                <!-- Navigation -->
                 <button onclick="navigateHome()" class="group mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition w-fit px-4 py-2 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10">
                     <i class="fa-solid fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
                     <span class="font-medium">Back to Trending</span>
@@ -123,24 +111,17 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
-                    <!-- LEFT COLUMN: Content (8 cols) -->
                     <div class="lg:col-span-8 flex flex-col gap-8">
-                        
-                        <!-- The Stage (Iframe) -->
                         <div class="relative group">
-                            <!-- Glow Effect -->
                             <div class="absolute -inset-0.5 bg-gradient-to-r from-orange-600 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000"></div>
-                            
                             <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-700/50">
                                 <iframe id="page-iframe" class="w-full h-full" src="" allowtransparency="true" allowfullscreen allow="autoplay; microphone; camera"></iframe>
                             </div>
                         </div>
 
-                        <!-- Project Info Card -->
                         <div class="glass-panel p-6 sm:p-8 rounded-2xl shadow-xl">
                             <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                                 <div>
-                                    <!-- SECURITY FIX: Use textContent in JS or strict escaping -->
                                     <h1 id="page-title" class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2 leading-tight">...</h1>
                                     <div class="flex flex-wrap items-center gap-3">
                                         <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
@@ -151,7 +132,6 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Mini Stats -->
                                 <div class="flex gap-3">
                                     <div class="flex flex-col items-center bg-slate-800/50 px-4 py-2 rounded-lg border border-white/5 min-w-[70px]">
                                         <i class="fa-regular fa-eye text-blue-400 text-sm mb-1"></i>
@@ -176,29 +156,19 @@
                             </div>
                         </div>
 
-                        <!-- Reviews Section -->
                         <div class="glass-panel p-6 sm:p-8 rounded-2xl shadow-xl">
                             <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
                                 <span class="bg-green-500/10 text-green-400 p-2 rounded-lg"><i class="fa-solid fa-comments"></i></span>
                                 Community Reviews
                             </h3>
-                            
-                            <div id="reviews-list" class="flex flex-col gap-4">
-                                <!-- Reviews will load here -->
-                            </div>
+                            <div id="reviews-list" class="flex flex-col gap-4"></div>
                         </div>
                     </div>
 
-                    <!-- RIGHT COLUMN: Interactive (4 cols) -->
                     <div class="lg:col-span-4 flex flex-col gap-6 sticky top-24">
-                        
-                        <!-- Score Card -->
                         <div class="glass-panel p-6 rounded-2xl shadow-2xl relative overflow-hidden group">
-                            <!-- Animated Background Blob -->
                             <div class="absolute -top-12 -right-12 w-40 h-40 bg-orange-500/20 rounded-full blur-3xl group-hover:bg-orange-500/30 transition duration-1000"></div>
-                            
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 relative z-10">Community Score</h3>
-                            
                             <div class="flex flex-col items-center relative z-10">
                                 <div class="relative w-40 h-40 flex items-center justify-center mb-4">
                                     <svg class="transform -rotate-90 w-40 h-40 drop-shadow-xl">
@@ -210,7 +180,6 @@
                                         <span class="text-xs font-bold text-slate-500 uppercase mt-1">Rating</span>
                                     </div>
                                 </div>
-                                
                                 <div class="text-center">
                                     <div class="text-xl text-white font-bold mb-1 flex items-center justify-center gap-2">
                                         <span id="page-score-display">--</span> <span class="text-yellow-500">★</span>
@@ -222,7 +191,6 @@
                             </div>
                         </div>
 
-                        <!-- Voting & Input Panel -->
                         <div class="glass-panel p-6 rounded-2xl shadow-xl">
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Rate & Review</h3>
                             
@@ -231,39 +199,33 @@
                                     <span>Bad</span>
                                     <span>Awesome</span>
                                 </div>
-                                
-                                <!-- Stars Grid -->
                                 <div class="grid grid-cols-10 gap-1 mb-6 bg-slate-900/50 p-2 rounded-xl border border-white/5" id="stars-container"></div>
-                                
                                 <p id="vote-msg" class="text-center text-xs font-bold text-orange-400 h-4 mb-4 transition-colors"></p>
                                 
-                                <textarea id="review-comment" class="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition mb-3 resize-y min-h-[80px]" placeholder="What did you think? (Optional)"></textarea>
+                                <div class="relative">
+                                    <textarea id="review-comment" maxlength="500" class="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition mb-3 resize-y min-h-[80px]" placeholder="Review (Max 500 chars)"></textarea>
+                                    <span id="char-count" class="absolute bottom-4 right-3 text-[10px] text-slate-500">0/500</span>
+                                </div>
                                 
-                                <button onclick="submitReview()" class="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-2.5 rounded-xl transition shadow-lg shadow-orange-900/20 active:scale-95">
+                                <button onclick="submitReview()" id="submit-btn" class="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-2.5 rounded-xl transition shadow-lg shadow-orange-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
                                     Post Review
                                 </button>
                             </div>
                             
-                            <!-- Login Wall -->
                             <div id="login-warning" class="bg-slate-900/60 p-5 rounded-xl text-center border border-white/10 mt-2">
-                                <div class="bg-orange-500/10 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3 text-orange-500">
-                                    <i class="fa-solid fa-lock"></i>
-                                </div>
+                                <div class="bg-orange-500/10 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3 text-orange-500"><i class="fa-solid fa-lock"></i></div>
                                 <p class="text-slate-300 text-sm mb-3 font-medium">Login to rate & review</p>
                                 <button onclick="loginWithWorker()" class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 transition">Login with Scratch</button>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
         </div>
-
     </main>
 
     <script>
-        // CONFIGURATION
-        const WORKER_URL = "https://scratchrate.logise1123.workers.dev"; // TU WORKER
+        const WORKER_URL = "https://scratchrate.logise1123.workers.dev"; // UPDATE THIS
         const PROXY = "https://api.allorigins.win/raw?url=";
         const API_TRENDING = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=trending&q=*";
         const API_SEARCH_BASE = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=popular&q=";
@@ -276,11 +238,18 @@
             checkAuth();
             handleRouting();
             if(!location.hash.startsWith('#project-')) fetchProjects();
+            
+            // Character counter logic
+            const txt = document.getElementById('review-comment');
+            txt.addEventListener('input', () => {
+                document.getElementById('char-count').textContent = `${txt.value.length}/500`;
+                if(txt.value.length >= 500) document.getElementById('char-count').classList.add('text-red-500');
+                else document.getElementById('char-count').classList.remove('text-red-500');
+            });
         });
 
         window.addEventListener('hashchange', handleRouting);
 
-        // --- ROUTING ---
         function handleRouting() {
             const hash = location.hash;
             if (hash.startsWith('#project-')) {
@@ -297,9 +266,8 @@
             document.getElementById('home-view').classList.add('active');
             document.getElementById('project-view').classList.remove('active');
             document.getElementById('search-container').classList.remove('hidden');
-            document.getElementById('page-iframe').src = ""; // Stop video
+            document.getElementById('page-iframe').src = "";
             document.body.style.overflow = "auto";
-            
             if(projectsData.length === 0) fetchProjects();
         }
 
@@ -309,7 +277,6 @@
             document.getElementById('search-container').classList.add('hidden');
             window.scrollTo(0,0);
 
-            // Fetch or find project
             let p = projectsData.find(x => x.id == id);
             if (!p) {
                 try {
@@ -323,18 +290,14 @@
                     return;
                 }
             }
-            
             currentProject = p;
             renderProjectDetails(p);
         }
 
-        // --- RENDER PAGE ---
         function renderProjectDetails(p) {
-            // Dynamic Background
             const thumbUrl = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
             document.getElementById('project-background').style.backgroundImage = `url('${thumbUrl}')`;
 
-            // Info (Security: Use textContent)
             document.getElementById('page-title').textContent = p.title;
             document.getElementById('page-author').textContent = p.author.username;
             document.getElementById('page-id').textContent = `ID: ${p.id}`;
@@ -343,21 +306,19 @@
             document.getElementById('page-views').textContent = formatNum(p.stats.views);
             document.getElementById('page-loves').textContent = formatNum(p.stats.loves);
 
-            // Reset Interactions
             updatePageRating(0, 0, true);
             resetStars();
             document.getElementById('review-comment').value = "";
+            document.getElementById('char-count').textContent = "0/500";
             document.getElementById('reviews-list').innerHTML = '<div class="flex justify-center py-8"><div class="loader"></div></div>';
 
             fetchProjectStatsAndReviews(p.id);
         }
 
-        // --- FETCHING & DATA ---
         async function fetchProjectStatsAndReviews(id) {
             try {
                 const res = await fetch(`${WORKER_URL}/stats?id=${id}`);
                 const data = await res.json();
-                
                 projectsStatsCache[id] = data;
                 updatePageRating(Number(data.average), Number(data.count));
                 renderReviews(data.reviews || []);
@@ -371,38 +332,26 @@
             list.innerHTML = '';
             
             if (reviews.length === 0) {
-                list.innerHTML = `
-                    <div class="text-center py-10 opacity-50">
-                        <i class="fa-regular fa-comments text-4xl mb-2"></i>
-                        <p>No reviews yet. Be the first!</p>
-                    </div>`;
+                list.innerHTML = `<div class="text-center py-10 opacity-50"><i class="fa-regular fa-comments text-4xl mb-2"></i><p>No reviews yet. Be the first!</p></div>`;
                 return;
             }
 
             reviews.forEach(r => {
                 let colorClass = r.rating >= 8 ? 'bg-green-500/20 text-green-400 border-green-500/30' : (r.rating >= 5 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30');
-                
                 const item = document.createElement('div');
                 item.className = "bg-slate-900/40 p-4 rounded-xl border border-white/5 flex flex-col gap-2 transition hover:bg-slate-900/60";
-                
-                // SECURITY: escapeHtml on username and comment
                 item.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold border border-white/5">
-                                ${escapeHtml(r.username).charAt(0).toUpperCase()}
-                            </div>
+                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold border border-white/5">${escapeHtml(r.username).charAt(0).toUpperCase()}</div>
                             <div>
                                 <div class="font-bold text-slate-200 text-sm">${escapeHtml(r.username)}</div>
                                 <div class="text-[10px] text-slate-500">${new Date(r.timestamp).toLocaleDateString()}</div>
                             </div>
                         </div>
-                        <div class="${colorClass} px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5">
-                            <i class="fa-solid fa-star text-[10px]"></i> ${r.rating}
-                        </div>
+                        <div class="${colorClass} px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5"><i class="fa-solid fa-star text-[10px]"></i> ${r.rating}</div>
                     </div>
-                    ${r.comment ? `<p class="text-slate-300 text-sm mt-1 pl-11 leading-relaxed">${escapeHtml(r.comment)}</p>` : ''}
-                `;
+                    ${r.comment ? `<p class="text-slate-300 text-sm mt-1 pl-11 leading-relaxed">${escapeHtml(r.comment)}</p>` : ''}`;
                 list.appendChild(item);
             });
         }
@@ -414,25 +363,20 @@
             document.getElementById('page-vote-count').textContent = count;
 
             if(reset) {
-                circle.style.strokeDashoffset = 440; // Circ for r=70 is ~440
+                circle.style.strokeDashoffset = 440;
                 scoreDisplay.textContent = "--";
                 ratingText.textContent = "?";
                 return;
             }
-
             scoreDisplay.textContent = avg.toFixed(1);
             ratingText.textContent = avg.toFixed(1);
-            
             const pct = (avg / 10) * 100;
-            const offset = 440 - (440 * pct) / 100;
-            circle.style.strokeDashoffset = offset;
-            
+            circle.style.strokeDashoffset = 440 - (440 * pct) / 100;
             if(avg >= 8) circle.setAttribute('stroke', '#4ade80');
             else if(avg >= 5) circle.setAttribute('stroke', '#facc15');
             else circle.setAttribute('stroke', '#f87171');
         }
 
-        // --- STARS UI ---
         function generateStarsUI() {
             const c = document.getElementById('stars-container');
             c.innerHTML = '';
@@ -449,8 +393,7 @@
 
         function highlightStars(num) {
             const msg = document.getElementById('vote-msg');
-            msg.className = "text-center text-xs font-bold h-4 mb-4 transition-colors"; // Reset
-            
+            msg.className = "text-center text-xs font-bold h-4 mb-4 transition-colors"; 
             for(let j=1; j<=10; j++) {
                 const s = document.getElementById(`s${j}`);
                 s.classList.remove('text-slate-700', 'text-yellow-400', 'text-green-400', 'text-red-400');
@@ -458,9 +401,7 @@
                     if (num <= 4) { s.classList.add('text-red-400'); if(j===num) msg.classList.add('text-red-400'); }
                     else if (num <= 7) { s.classList.add('text-yellow-400'); if(j===num) msg.classList.add('text-yellow-400'); }
                     else { s.classList.add('text-green-400'); if(j===num) msg.classList.add('text-green-400'); }
-                } else {
-                    s.classList.add('text-slate-700');
-                }
+                } else { s.classList.add('text-slate-700'); }
             }
         }
 
@@ -475,46 +416,39 @@
             if (currentRating === 0) return alert("Please select a star rating first.");
             
             const comment = document.getElementById('review-comment').value.trim();
-            const btn = document.querySelector('#vote-area button');
+            const btn = document.getElementById('submit-btn');
             const originalText = btn.textContent;
             
             btn.disabled = true;
             btn.textContent = "Posting...";
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
-
+            
             try {
                 const res = await fetch(`${WORKER_URL}/vote`, {
                     method: 'POST', 
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        sessionToken, 
-                        projectId: currentProject.id, 
-                        rating: currentRating,
-                        comment: comment 
-                    })
+                    body: JSON.stringify({ sessionToken, projectId: currentProject.id, rating: currentRating, comment })
                 });
 
                 if(res.ok) {
                     fetchProjectStatsAndReviews(currentProject.id);
-                    fetchCardStats(currentProject.id); // Update home grid cache
+                    fetchCardStats(currentProject.id);
                     document.getElementById('review-comment').value = "";
+                    document.getElementById('char-count').textContent = "0/500";
                     btn.textContent = "Review Posted!";
-                    setTimeout(() => {
-                        btn.disabled = false;
-                        btn.textContent = "Post Review";
-                        btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                    }, 2000);
-                } else { throw new Error("Failed"); }
+                    setTimeout(() => { btn.disabled = false; btn.textContent = "Post Review"; }, 2000);
+                } else { 
+                    const err = await res.json();
+                    if(res.status === 429) alert(err.error || "Too many requests. Please wait.");
+                    else throw new Error("Failed"); 
+                }
             } catch(e) {
                 console.error(e);
-                alert("Error posting review.");
+                alert("Error posting review. Try again.");
                 btn.disabled = false;
                 btn.textContent = originalText;
-                btn.classList.remove('opacity-75', 'cursor-not-allowed');
             }
         }
 
-        // --- GENERAL LOGIC (Proxy, Search, etc) ---
         async function fetchWithProxy(targetUrl) {
             const proxyUrl = `${WORKER_URL}/proxy?url=${encodeURIComponent(targetUrl)}`;
             const res = await fetch(proxyUrl);
@@ -551,7 +485,7 @@
                 if(res.ok) {
                     const batchData = await res.json();
                     Object.assign(projectsStatsCache, batchData);
-                    renderGrid(projectsData); // Re-render badges
+                    renderGrid(projectsData);
                 }
             } catch(e) {}
         }
@@ -573,29 +507,20 @@
                 card.onclick = () => window.location.hash = `project-${p.id}`;
                 const img = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
                 
-                // Badge Logic
                 const stats = projectsStatsCache[p.id] || { count: 0, average: 0 };
                 let badgeHtml = '';
                 
                 if(stats.count >= 5) {
                     let color = stats.average >= 8 ? 'bg-green-500 text-white' : (stats.average >= 5 ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white');
-                    badgeHtml = `<div class="absolute top-2 left-2 ${color} px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg flex items-center gap-1">
-                        <i class="fa-solid fa-star text-[8px]"></i> ${Number(stats.average).toFixed(1)}
-                    </div>`;
+                    badgeHtml = `<div class="absolute top-2 left-2 ${color} px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg flex items-center gap-1"><i class="fa-solid fa-star text-[8px]"></i> ${Number(stats.average).toFixed(1)}</div>`;
                 } else {
-                    // NEW: Pending Rate badge logic
-                    badgeHtml = `<div class="absolute top-2 left-2 bg-gray-800/90 text-gray-400 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg flex items-center gap-1 border border-gray-600">
-                        <i class="fa-regular fa-clock text-[8px]"></i> Pending Rate
-                    </div>`;
+                    badgeHtml = `<div class="absolute top-2 left-2 bg-gray-800/90 text-gray-400 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg flex items-center gap-1 border border-gray-600"><i class="fa-regular fa-clock text-[8px]"></i> Pending Rate</div>`;
                 }
 
-                // SECURITY: escapeHtml on title and username
                 card.innerHTML = `
                     <div class="relative w-full aspect-[4/3] bg-black">
                         <img src="${img}" class="w-full h-full object-cover" loading="lazy">
-                        <div class="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white backdrop-blur-sm flex items-center gap-1">
-                            <i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}
-                        </div>
+                        <div class="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white backdrop-blur-sm flex items-center gap-1"><i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}</div>
                         ${badgeHtml}
                     </div>
                     <div class="p-4 flex-grow flex flex-col justify-between">
@@ -619,7 +544,7 @@
 
             let sorted = [...projectsData];
             if (mode !== 'default') {
-                // If sorted by rating, prefer those with votes
+                sorted = sorted.filter(p => (projectsStatsCache[p.id]?.count || 0) > 0);
                 if (mode === 'best') sorted.sort((a, b) => (projectsStatsCache[b.id]?.average || 0) - (projectsStatsCache[a.id]?.average || 0));
                 else if (mode === 'worst') sorted.sort((a, b) => (projectsStatsCache[a.id]?.average || 0) - (projectsStatsCache[b.id]?.average || 0));
                 else if (mode === 'most-voted') sorted.sort((a, b) => (projectsStatsCache[b.id]?.count || 0) - (projectsStatsCache[a.id]?.count || 0));
@@ -652,14 +577,9 @@
         function logout() { localStorage.clear(); location.reload(); }
         function formatNum(n) { return new Intl.NumberFormat('en-US', {notation:"compact"}).format(n); }
         
-        // SECURITY: Prevents XSS by escaping HTML characters
         function escapeHtml(text) { 
             if (!text) return "";
-            return text.replace(/&/g, "&amp;")
-                       .replace(/</g, "&lt;")
-                       .replace(/>/g, "&gt;")
-                       .replace(/"/g, "&quot;")
-                       .replace(/'/g, "&#039;"); 
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); 
         }
     </script>
 </body>
