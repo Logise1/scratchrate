@@ -19,117 +19,105 @@
         .scratch-text { color: #f97316; }
         .loader { border: 4px solid #1e293b; border-top: 4px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .star-btn { cursor: pointer; transition: color 0.2s; }
-        .star-btn:hover, .star-btn.active { color: #facc15; }
+        .star-btn { cursor: pointer; transition: color 0.1s, transform 0.1s; font-size: 1.25rem; }
+        .star-btn:hover { transform: scale(1.2); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Header -->
     <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-lg">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid fa-cat text-3xl scratch-text"></i>
-                <h1 class="text-2xl font-bold tracking-tight hidden sm:block">Scratch <span class="scratch-text">Trending</span></h1>
-            </div>
-            
-            <!-- Auth Section -->
-            <div id="auth-section" class="flex items-center gap-4">
-                <button id="btn-login" onclick="loginWithWorker()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> Login with Scratch
-                </button>
-                <div id="user-info" class="hidden flex items-center gap-3">
-                    <span class="text-sm text-slate-300">Hi, <span id="username-display" class="font-bold text-white">User</span></span>
-                    <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 underline">Logout</button>
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-cat text-3xl scratch-text"></i>
+                    <h1 class="text-2xl font-bold tracking-tight hidden sm:block">Scratch <span class="scratch-text">Explorer</span></h1>
+                </div>
+                <!-- Search Bar -->
+                <div class="flex-grow max-w-lg w-full relative">
+                    <form onsubmit="handleSearch(event)" class="flex gap-2">
+                        <input type="text" id="search-input" placeholder="Search projects..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:border-orange-500 transition">
+                        <button type="submit" class="bg-slate-700 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </form>
+                </div>
+                <!-- Auth -->
+                <div id="auth-section" class="flex items-center gap-4 min-w-fit">
+                    <button id="btn-login" onclick="loginWithWorker()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2 text-sm"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
+                    <div id="user-info" class="hidden flex items-center gap-3">
+                        <span class="text-sm text-slate-300 hidden sm:inline">Hi, <span id="username-display" class="font-bold text-white">User</span></span>
+                        <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 underline">Logout</button>
+                    </div>
                 </div>
             </div>
         </div>
     </header>
 
+    <!-- Filters -->
+    <div class="bg-slate-900 border-b border-slate-800 py-3">
+        <div class="container mx-auto px-4 flex gap-4 overflow-x-auto whitespace-nowrap custom-scrollbar">
+            <span class="text-slate-400 text-sm font-bold uppercase self-center mr-2"><i class="fa-solid fa-arrow-down-short-wide mr-1"></i> Sort By:</span>
+            <button onclick="sortGrid('default')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition active-sort" id="sort-default">Trending</button>
+            <button onclick="sortGrid('best')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-green-900 text-xs text-green-400 border border-slate-700 transition" id="sort-best">Best Rated</button>
+            <button onclick="sortGrid('worst')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-red-900 text-xs text-red-400 border border-slate-700 transition" id="sort-worst">Worst Rated</button>
+            <button onclick="sortGrid('most-voted')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-blue-900 text-xs text-blue-400 border border-slate-700 transition" id="sort-most-voted">Most Voted</button>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <main class="flex-grow container mx-auto px-4 py-8">
         <div id="loading" class="flex flex-col items-center justify-center py-20">
             <div class="loader mb-4"></div>
-            <p class="text-slate-400 animate-pulse">Loading Projects...</p>
+            <p class="text-slate-400 animate-pulse">Loading Projects from Scratch via Worker...</p>
         </div>
         <div id="projects-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 hidden"></div>
+        <p id="no-results" class="hidden text-center text-slate-500 mt-10">No projects found.</p>
     </main>
 
     <!-- Modal -->
     <div id="project-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
         <div class="bg-slate-900 rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col border border-slate-700">
             <div class="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900">
-                <h2 class="text-lg font-semibold text-slate-300 truncate pr-4" id="modal-title-top">Project Viewer</h2>
+                <h2 class="text-lg font-semibold text-slate-300 truncate pr-4" id="modal-title-top">Viewer</h2>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-2xl"></i></button>
             </div>
-
             <div class="flex-grow overflow-y-auto p-0 lg:p-6">
                 <div class="flex flex-col lg:flex-row gap-6">
-                    <!-- Left: Embed -->
                     <div class="w-full lg:w-2/3 flex flex-col gap-4">
                         <div class="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-lg border border-slate-800 relative">
                             <iframe id="modal-iframe" class="w-full h-full" src="" allowtransparency="true" allowfullscreen></iframe>
                         </div>
                         <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
                             <h1 id="modal-title" class="text-3xl font-bold text-white mb-1">...</h1>
-                            <p class="text-slate-400">by <span id="modal-author" class="text-orange-400 font-bold">...</span> <span class="text-xs bg-slate-700 px-2 py-0.5 rounded ml-2" id="modal-id">ID</span></p>
+                            <p class="text-slate-400">by <span id="modal-author" class="text-orange-400 font-bold">...</span></p>
                         </div>
                     </div>
-
-                    <!-- Right: Data + Star Rating -->
                     <div class="w-full lg:w-1/3 flex flex-col gap-4">
-                        <!-- Rating Box -->
                         <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 shadow-lg relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-star text-6xl"></i></div>
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">COMMUNITY RATING</h3>
-                            
+                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">SCORE</h3>
                             <div class="flex items-center gap-4 mb-4">
                                 <div class="relative w-20 h-20 flex items-center justify-center">
-                                    <svg class="transform -rotate-90 w-20 h-20">
-                                        <circle cx="40" cy="40" r="36" stroke="#334155" stroke-width="8" fill="transparent" />
-                                        <circle id="enjoyment-circle" cx="40" cy="40" r="36" stroke="#fbbf24" stroke-width="8" fill="transparent" stroke-dasharray="226" stroke-dashoffset="226" />
-                                    </svg>
-                                    <span id="rating-text" class="absolute text-xl font-bold text-white">0.0</span>
+                                    <svg class="transform -rotate-90 w-20 h-20"><circle cx="40" cy="40" r="36" stroke="#334155" stroke-width="8" fill="transparent" /><circle id="enjoyment-circle" cx="40" cy="40" r="36" stroke="#fbbf24" stroke-width="8" fill="transparent" stroke-dasharray="226" stroke-dashoffset="226" /></svg>
+                                    <span id="rating-text" class="absolute text-xl font-bold text-white">?</span>
                                 </div>
                                 <div>
-                                    <div class="flex text-yellow-400 text-sm mb-1" id="stars-display">
-                                        <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
-                                    </div>
-                                    <div class="text-xs text-slate-500"><span id="vote-count">0</span> votes (Cloudflare)</div>
+                                    <div class="text-2xl font-bold text-white mb-1" id="score-display">???</div>
+                                    <div class="text-xs text-slate-500"><span id="vote-count" class="text-slate-300 font-bold">0</span> votes</div>
+                                    <div id="threshold-warning" class="text-[10px] text-orange-400 mt-1 hidden">(Hidden until 20 votes)</div>
                                 </div>
                             </div>
-                            
-                            <!-- Stats Scratch Originales -->
-                            <div class="flex justify-between text-xs text-slate-500 mt-2 border-t border-slate-700 pt-2">
-                                <span><i class="fa-regular fa-eye"></i> Views: <span id="stat-views">0</span></span>
-                                <span><i class="fa-regular fa-heart"></i> Loves: <span id="stat-loves">0</span></span>
-                            </div>
                         </div>
-
-                        <!-- Panel Votación (Stars) -->
                         <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">RATE THIS PROJECT</h3>
-                            
+                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-3 tracking-wider">YOUR VOTE (1-10)</h3>
                             <div id="vote-area" class="opacity-50 pointer-events-none transition-opacity">
-                                <div class="flex justify-center gap-2 text-3xl text-slate-600 mb-2">
-                                    <button onclick="rateProject(1)" onmouseover="hoverStars(1)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s1"></button>
-                                    <button onclick="rateProject(2)" onmouseover="hoverStars(2)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s2"></button>
-                                    <button onclick="rateProject(3)" onmouseover="hoverStars(3)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s3"></button>
-                                    <button onclick="rateProject(4)" onmouseover="hoverStars(4)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s4"></button>
-                                    <button onclick="rateProject(5)" onmouseover="hoverStars(5)" onmouseout="resetStars()" class="star-btn fa-solid fa-star" id="s5"></button>
-                                </div>
-                                <p id="vote-msg" class="text-center text-xs text-slate-500">Click a star to vote</p>
+                                <div class="grid grid-cols-10 gap-0.5 mb-2" id="stars-container"></div>
+                                <div class="flex justify-between text-[10px] text-slate-500 uppercase font-bold px-1"><span>Worst</span><span>Best</span></div>
+                                <p id="vote-msg" class="text-center text-xs text-slate-400 mt-2 h-4">Select rating</p>
                             </div>
-                            
-                            <p id="login-warning" class="text-center text-xs text-orange-400 mt-3">Please login to rate.</p>
+                            <p id="login-warning" class="text-center text-xs text-orange-400 mt-3">Please login to vote.</p>
                         </div>
-
                         <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 flex-grow">
-                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-2">Instructions & Notes</h3>
-                            <div class="overflow-y-auto max-h-40 custom-scrollbar pr-2">
-                                <p id="modal-desc" class="text-sm text-slate-300 whitespace-pre-wrap">...</p>
-                            </div>
+                            <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-2">Info</h3>
+                            <div class="overflow-y-auto max-h-40 custom-scrollbar pr-2"><p id="modal-desc" class="text-sm text-slate-300 whitespace-pre-wrap">...</p></div>
                         </div>
                     </div>
                 </div>
@@ -138,291 +126,267 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        // REPLACE THIS WITH YOUR DEPLOYED WORKER URL
-        const WORKER_URL = "https://scratchrate.logise1123.workers.dev";
-        
-        const PROXY = "https://api.allorigins.win/raw?url=";
-        const API_SCRATCH = "https://api.scratch.mit.edu/explore/projects?limit=32&offset=0&language=es&mode=trending&q=*";
+        // CONFIG
+        const WORKER_URL = "https://scratchrate.logise1123.workers.dev"; // PON TU URL AQUI
+        const API_TRENDING = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=trending&q=*";
+        const API_SEARCH_BASE = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=popular&q="; 
 
-        let currentProject = null;
-        let sessionToken = null;
-        let currentUser = null;
+        let currentProject = null, sessionToken = null, currentUser = null;
+        let projectsData = [], projectsStatsCache = {};
 
-        // --- INIT ---
         window.addEventListener('DOMContentLoaded', () => {
+            generateStarsUI();
             checkAuth();
             fetchProjects();
         });
 
-        // --- AUTH LOGIC (Using Worker) ---
-        function checkAuth() {
-            // Check for URL params returned from Worker redirect
-            const params = new URLSearchParams(window.location.search);
-            const tokenParam = params.get('token');
-            const userParam = params.get('username');
-
-            if (tokenParam && userParam) {
-                // Save session
-                localStorage.setItem('scratch_session', tokenParam);
-                localStorage.setItem('scratch_user', userParam);
-                // Clean URL
-                window.history.replaceState({}, document.title, "/");
-                sessionToken = tokenParam;
-                currentUser = userParam;
-            } else {
-                // Load from storage
-                sessionToken = localStorage.getItem('scratch_session');
-                currentUser = localStorage.getItem('scratch_user');
-            }
-
-            updateAuthUI();
+        // 1. PROXY REQUEST
+        async function fetchWithProxy(targetUrl) {
+            const proxyUrl = `${WORKER_URL}/proxy?url=${encodeURIComponent(targetUrl)}`;
+            const res = await fetch(proxyUrl);
+            if (!res.ok) throw new Error("Proxy error");
+            return res.json();
         }
 
-        function updateAuthUI() {
-            const btnLogin = document.getElementById('btn-login');
-            const userInfo = document.getElementById('user-info');
-            const voteArea = document.getElementById('vote-area');
-            const loginWarn = document.getElementById('login-warning');
-
-            if (sessionToken && currentUser) {
-                btnLogin.classList.add('hidden');
-                userInfo.classList.remove('hidden');
-                document.getElementById('username-display').textContent = currentUser;
-                
-                // Enable Voting
-                voteArea.classList.remove('opacity-50', 'pointer-events-none');
-                loginWarn.classList.add('hidden');
-            } else {
-                btnLogin.classList.remove('hidden');
-                userInfo.classList.add('hidden');
-                voteArea.classList.add('opacity-50', 'pointer-events-none');
-                loginWarn.classList.remove('hidden');
-            }
+        // 2. SEARCH & FETCH
+        function handleSearch(e) {
+            e.preventDefault();
+            const query = document.getElementById('search-input').value.trim();
+            if(!query) return;
+            toggleLoading(true);
+            fetchProjects(API_SEARCH_BASE + encodeURIComponent(query));
         }
 
-        function loginWithWorker() {
-            // Redirect to Cloudflare Worker to handle Scratch Auth
-            window.location.href = `${WORKER_URL}/auth/login`;
-        }
-
-        function logout() {
-            localStorage.removeItem('scratch_session');
-            localStorage.removeItem('scratch_user');
-            location.reload();
-        }
-
-        // --- PROJECTS LOGIC ---
-        async function fetchProjects() {
+        async function fetchProjects(url = API_TRENDING) {
             try {
-                const res = await fetch(PROXY + encodeURIComponent(API_SCRATCH));
-                const data = await res.json();
-                renderGrid(data);
+                const data = await fetchWithProxy(url);
+                if(!data || data.length === 0) {
+                    toggleLoading(false, true);
+                    projectsData = [];
+                    return;
+                }
+                projectsData = data;
+                projectsStatsCache = {}; // Clear cache
+                
+                // BATCH FETCH STATS
+                const ids = data.map(p => p.id);
+                await fetchBatchStats(ids);
+
+                renderGrid(projectsData);
+                toggleLoading(false);
             } catch (e) {
                 console.error(e);
-                document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading Scratch API. Try refreshing.</p>";
+                document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading Scratch API via Worker Proxy.</p>";
             }
+        }
+
+        async function fetchBatchStats(ids) {
+            try {
+                const res = await fetch(`${WORKER_URL}/stats-batch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                if(res.ok) {
+                    const batchData = await res.json();
+                    Object.assign(projectsStatsCache, batchData);
+                }
+            } catch(e) { console.error("Batch stats failed", e); }
         }
 
         function renderGrid(projects) {
             const grid = document.getElementById('projects-grid');
-            document.getElementById('loading').classList.add('hidden');
-            grid.classList.remove('hidden');
             grid.innerHTML = '';
-
             projects.forEach(p => {
                 const card = document.createElement('div');
-                card.className = "project-card bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative";
+                card.className = "project-card bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative flex flex-col";
                 card.onclick = () => openModal(p);
-                
                 const img = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
                 
+                // Check stats for badge
+                const stats = projectsStatsCache[p.id] || { count: 0, average: 0 };
+                let badgeHtml = '';
+                if(stats.count >= 20) {
+                    let color = stats.average >= 8 ? 'text-green-400' : (stats.average >= 5 ? 'text-yellow-400' : 'text-red-400');
+                    badgeHtml = `<div class="absolute top-2 left-2 bg-black/80 px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 backdrop-blur-sm border border-slate-600 ${color}">
+                        <i class="fa-solid fa-star text-[10px]"></i><span>${Number(stats.average).toFixed(1)}</span></div>`;
+                }
+
                 card.innerHTML = `
                     <div class="relative w-full aspect-[4/3] bg-black">
                         <img src="${img}" class="w-full h-full object-cover" loading="lazy">
-                        <!-- Views Badge -->
-                        <div class="absolute bottom-2 right-2 bg-black/60 px-2 rounded text-xs text-white">
-                            <i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}
-                        </div>
-                        <!-- Percentage Badge (Loaded Asynchronously) -->
-                        <div id="card-rating-${p.id}" class="absolute top-2 left-2 bg-black/60 text-yellow-400 px-2 py-0.5 rounded text-xs font-bold hidden">
-                            <i class="fa-solid fa-star text-[10px] mr-1"></i><span>--%</span>
-                        </div>
+                        <div class="absolute bottom-2 right-2 bg-black/60 px-2 rounded text-xs text-white backdrop-blur-sm"><i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}</div>
+                        ${badgeHtml}
                     </div>
-                    <div class="p-3">
-                        <h3 class="font-bold text-white truncate">${p.title}</h3>
+                    <div class="p-3 flex-grow">
+                        <h3 class="font-bold text-white truncate text-sm mb-1">${p.title}</h3>
                         <p class="text-xs text-slate-400">by ${p.author.username}</p>
-                    </div>
-                `;
+                    </div>`;
                 grid.appendChild(card);
-                
-                // Fetch stats for this card asynchronously
-                fetchCardStats(p.id);
             });
         }
 
-        // --- FETCH STATS FOR CARDS ---
-        async function fetchCardStats(projectId) {
-            try {
-                const res = await fetch(`${WORKER_URL}/stats?id=${projectId}`);
-                if (!res.ok) return;
-                const data = await res.json();
-                
-                // Logic: (Average / 5) * 100
-                const average = Number(data.average);
-                const count = Number(data.count);
-                
-                if (count > 0) {
-                    const percentage = (average / 5) * 100;
-                    const badge = document.getElementById(`card-rating-${projectId}`);
-                    if (badge) {
-                        badge.querySelector('span').textContent = percentage.toFixed(1) + "%";
-                        badge.classList.remove('hidden');
-                        
-                        // Color coding based on percentage
-                        if (percentage >= 80) badge.classList.add('text-green-400');
-                        else if (percentage >= 50) badge.classList.add('text-yellow-400');
-                        else badge.classList.add('text-slate-300');
-                    }
-                }
-            } catch (e) {
-                // Silent fail for individual cards to not spam console
+        // 3. SORTING & FILTERING (Hidden if no stats)
+        function sortGrid(mode) {
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.replace('bg-slate-600', 'bg-slate-800'));
+            document.getElementById(`sort-${mode}`).classList.replace('bg-slate-800', 'bg-slate-600');
+
+            let sorted = [...projectsData];
+
+            if (mode !== 'default') {
+                // FILTER: Only show projects with votes
+                sorted = sorted.filter(p => {
+                    const s = projectsStatsCache[p.id];
+                    return s && s.count > 0;
+                });
+
+                if (mode === 'best') sorted.sort((a, b) => (projectsStatsCache[b.id]?.average || 0) - (projectsStatsCache[a.id]?.average || 0));
+                else if (mode === 'worst') sorted.sort((a, b) => (projectsStatsCache[a.id]?.average || 0) - (projectsStatsCache[b.id]?.average || 0));
+                else if (mode === 'most-voted') sorted.sort((a, b) => (projectsStatsCache[b.id]?.count || 0) - (projectsStatsCache[a.id]?.count || 0));
             }
+            renderGrid(sorted);
         }
 
-        // --- MODAL & LOGIC ---
+        // 4. MODAL & VOTING
         function openModal(p) {
             currentProject = p;
+            document.getElementById('project-modal').classList.remove('hidden');
             
-            const modal = document.getElementById('project-modal');
-            
-            // UI Basic
+            // Info
             document.getElementById('modal-title').textContent = p.title;
             document.getElementById('modal-title-top').textContent = p.title;
             document.getElementById('modal-author').textContent = p.author.username;
-            document.getElementById('modal-id').textContent = p.id;
-            document.getElementById('modal-desc').textContent = (p.instructions || "") + "\n\n" + (p.description || "");
+            document.getElementById('modal-desc').textContent = (p.instructions||"") + "\n\n" + (p.description||"");
             document.getElementById('modal-iframe').src = `https://scratch.mit.edu/projects/${p.id}/embed`;
-            
-            // Stats Scratch
-            document.getElementById('stat-views').textContent = formatNum(p.stats.views);
-            document.getElementById('stat-loves').textContent = formatNum(p.stats.loves);
 
-            // Reset Rating UI
-            updateRatingDisplay(0, 0); 
+            // Reset & Load Stats
+            updateRatingDisplay(0, 0, true);
             resetStars();
-
-            // Fetch Real Stats from Worker
-            fetchRealStats(p.id);
-
-            modal.classList.remove('hidden');
+            
+            // If cached, show immediately
+            if(projectsStatsCache[p.id]) {
+                const c = projectsStatsCache[p.id];
+                updateRatingDisplay(c.average, c.count);
+            } else {
+                // Fetch individual if missing (rare with batch)
+                fetch(`${WORKER_URL}/stats?id=${p.id}`).then(r=>r.json()).then(d => {
+                    updateRatingDisplay(Number(d.average), Number(d.count));
+                });
+            }
         }
 
-        // --- WORKER INTERACTION ---
-        
-        async function fetchRealStats(projectId) {
-            try {
-                const res = await fetch(`${WORKER_URL}/stats?id=${projectId}`);
-                if(!res.ok) throw new Error("Stats fetch failed");
-                const data = await res.json();
+        function updateRatingDisplay(avg, count, reset) {
+            const circle = document.getElementById('enjoyment-circle');
+            const scoreDisplay = document.getElementById('score-display');
+            const ratingText = document.getElementById('rating-text');
+            const warning = document.getElementById('threshold-warning');
+            
+            document.getElementById('vote-count').textContent = count;
+            
+            if(reset) {
+                circle.style.strokeDashoffset = 226;
+                scoreDisplay.textContent = "...";
+                ratingText.textContent = "?";
+                warning.classList.add('hidden');
+                return;
+            }
+
+            if(count < 20) {
+                scoreDisplay.textContent = "Hidden";
+                ratingText.textContent = "?";
+                circle.style.strokeDashoffset = 226;
+                warning.classList.remove('hidden');
+                warning.textContent = `(Hidden until 20 votes. Current: ${count})`;
+            } else {
+                warning.classList.add('hidden');
+                scoreDisplay.textContent = avg.toFixed(1) + " / 10";
+                ratingText.textContent = avg.toFixed(1);
                 
-                // data format: { average: "4.5", count: 10 }
-                updateRatingDisplay(Number(data.average), Number(data.count));
-            } catch (e) {
-                console.warn("Could not fetch real stats:", e);
+                const pct = (avg / 10) * 100;
+                circle.style.strokeDashoffset = 226 - (226 * pct) / 100;
+                
+                if(avg >= 8) circle.setAttribute('stroke', '#4ade80');
+                else if(avg >= 5) circle.setAttribute('stroke', '#facc15');
+                else circle.setAttribute('stroke', '#f87171');
             }
         }
 
         async function rateProject(rating) {
-            if (!sessionToken) return alert("Please login first.");
+            if (!sessionToken) return alert("Login required");
+            document.getElementById('vote-msg').textContent = "Saving...";
             
-            // Optimistic UI Update
-            updateStarsUI(rating);
-            const msg = document.getElementById('vote-msg');
-            msg.textContent = "Saving vote...";
-
             try {
                 const res = await fetch(`${WORKER_URL}/vote`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionToken: sessionToken,
-                        projectId: currentProject.id,
-                        rating: rating
-                    })
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ sessionToken, projectId: currentProject.id, rating })
                 });
-
-                if (res.ok) {
-                    msg.textContent = "Vote saved!";
-                    msg.className = "text-center text-xs text-green-400 mt-2";
-                    // Refresh stats to get accurate average
-                    setTimeout(() => {
-                        fetchRealStats(currentProject.id);
-                        fetchCardStats(currentProject.id); // Also update card on grid
-                    }, 500);
-                } else {
-                    throw new Error("Worker rejected vote");
+                if(res.ok) {
+                    document.getElementById('vote-msg').textContent = "Saved!";
+                    document.getElementById('vote-msg').classList.add('text-green-400');
+                    // Refresh stats
+                    const r = await fetch(`${WORKER_URL}/stats?id=${currentProject.id}`);
+                    const d = await r.json();
+                    projectsStatsCache[currentProject.id] = { average: Number(d.average), count: Number(d.count) };
+                    updateRatingDisplay(Number(d.average), Number(d.count));
                 }
-            } catch (e) {
-                console.error(e);
-                msg.textContent = "Error saving vote.";
-                msg.className = "text-center text-xs text-red-400 mt-2";
-            }
+            } catch(e) { console.error(e); }
         }
 
-        // --- UI HELPERS ---
-        
-        function updateRatingDisplay(average, count) {
-            const percentage = (average / 5) * 100;
-            
-            document.getElementById('rating-text').textContent = average.toFixed(1);
-            document.getElementById('vote-count').textContent = count;
-            
-            // Circle Progress
-            const circle = document.getElementById('enjoyment-circle');
-            const offset = 226 - (226 * percentage) / 100;
-            circle.style.strokeDashoffset = offset;
-
-            // Star icons display (summary)
-            const starsDisplay = document.getElementById('stars-display');
-            let starsHTML = '';
-            for(let i=1; i<=5; i++) {
-                if (i <= Math.round(average)) starsHTML += '<i class="fa-solid fa-star"></i>';
-                else starsHTML += '<i class="fa-regular fa-star"></i>';
-            }
-            starsDisplay.innerHTML = starsHTML;
-        }
-
-        function hoverStars(num) {
-            for(let i=1; i<=5; i++) {
-                const s = document.getElementById(`s${i}`);
-                if(i <= num) s.classList.add('text-yellow-400');
-                else s.classList.remove('text-yellow-400');
+        // UTILS
+        function generateStarsUI() {
+            const c = document.getElementById('stars-container');
+            c.innerHTML = '';
+            for(let i=1; i<=10; i++) {
+                const b = document.createElement('i');
+                b.className = `star-btn fa-solid fa-star text-slate-700`;
+                b.id = `s${i}`;
+                b.onclick = () => rateProject(i);
+                b.onmouseover = () => {
+                    document.getElementById('vote-msg').textContent = `${i}/10`;
+                    for(let j=1; j<=10; j++) document.getElementById(`s${j}`).classList.toggle('text-yellow-400', j<=i);
+                };
+                b.onmouseout = resetStars;
+                c.appendChild(b);
             }
         }
-
         function resetStars() {
-            for(let i=1; i<=5; i++) {
-                document.getElementById(`s${i}`).classList.remove('text-yellow-400');
+            document.getElementById('vote-msg').textContent = "Select rating";
+            document.getElementById('vote-msg').classList.remove('text-green-400');
+            for(let i=1; i<=10; i++) document.getElementById(`s${i}`).classList.remove('text-yellow-400', 'text-slate-700');
+            for(let i=1; i<=10; i++) document.getElementById(`s${i}`).classList.add('text-slate-700');
+        }
+
+        function toggleLoading(show, empty=false) {
+            const l = document.getElementById('loading');
+            const g = document.getElementById('projects-grid');
+            const n = document.getElementById('no-results');
+            if(show) { l.classList.remove('hidden'); g.classList.add('hidden'); n.classList.add('hidden'); }
+            else { l.classList.add('hidden'); g.classList.toggle('hidden', empty); n.classList.toggle('hidden', !empty); }
+        }
+
+        // Auth & Misc
+        function checkAuth() {
+            const p = new URLSearchParams(location.search);
+            if(p.get('token')) {
+                localStorage.setItem('s_tok', p.get('token'));
+                localStorage.setItem('s_usr', p.get('username'));
+                history.replaceState({},'', '/');
+            }
+            sessionToken = localStorage.getItem('s_tok');
+            currentUser = localStorage.getItem('s_usr');
+            if(sessionToken) {
+                document.getElementById('btn-login').classList.add('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+                document.getElementById('username-display').textContent = currentUser;
+                document.getElementById('vote-area').classList.remove('opacity-50', 'pointer-events-none');
+                document.getElementById('login-warning').classList.add('hidden');
             }
         }
-
-        function updateStarsUI(votedNum) {
-             for(let i=1; i<=5; i++) {
-                const s = document.getElementById(`s${i}`);
-                if(i <= votedNum) s.classList.add('text-yellow-400');
-                else s.classList.remove('text-yellow-400');
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('project-modal').classList.add('hidden');
-            document.getElementById('modal-iframe').src = "";
-        }
-
-        function formatNum(n) {
-            return new Intl.NumberFormat('en-US', { notation: "compact" }).format(n);
-        }
+        function loginWithWorker() { location.href = `${WORKER_URL}/auth/login`; }
+        function logout() { localStorage.clear(); location.reload(); }
+        function closeModal() { document.getElementById('project-modal').classList.add('hidden'); document.getElementById('modal-iframe').src=""; }
+        function formatNum(n) { return new Intl.NumberFormat('en-US', {notation:"compact"}).format(n); }
     </script>
 </body>
 </html>
