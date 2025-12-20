@@ -9,185 +9,251 @@
     
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
-        .project-card { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
-        .project-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.3); border-color: #f97316; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 4px; }
+        
+        /* Smooth Fade Transitions */
+        .view-section { display: none; opacity: 0; transition: opacity 0.4s ease-in-out; }
+        .view-section.active { display: block; opacity: 1; }
+
+        /* Card Hover Effects */
+        .project-card { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s; }
+        .project-card:hover { transform: translateY(-6px); box-shadow: 0 12px 24px -8px rgba(249, 115, 22, 0.4); border-color: #f97316; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #f97316; }
+        
         .scratch-text { color: #f97316; }
         .loader { border: 4px solid #1e293b; border-top: 4px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Stars Interaction */
-        .star-btn { cursor: pointer; transition: color 0.1s, transform 0.1s; font-size: 1.5rem; }
-        .star-btn:hover { transform: scale(1.2); }
+        /* Star Animation */
+        .star-btn { cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .star-btn:hover { transform: scale(1.3) rotate(5deg); }
         
-        /* View Transition */
-        .view-section { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
-        .view-section.active { display: block; opacity: 1; }
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col bg-[#0f172a] overflow-x-hidden">
 
-    <!-- Header -->
-    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50 shadow-lg">
-        <div class="container mx-auto px-4 py-4">
+    <!-- Navbar -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="flex items-center gap-3 cursor-pointer" onclick="navigateHome()">
-                    <i class="fa-solid fa-cat text-3xl scratch-text"></i>
-                    <h1 class="text-2xl font-bold tracking-tight hidden sm:block">Scratch <span class="scratch-text">Explorer</span></h1>
+                <div class="flex items-center gap-3 cursor-pointer group" onclick="navigateHome()">
+                    <div class="bg-orange-500/10 p-2 rounded-lg group-hover:bg-orange-500/20 transition">
+                        <i class="fa-solid fa-cat text-2xl scratch-text"></i>
+                    </div>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-100">Scratch <span class="scratch-text">Explorer</span></h1>
                 </div>
+                
                 <!-- Search -->
-                <div id="search-container" class="flex-grow max-w-lg w-full relative">
-                    <form onsubmit="handleSearch(event)" class="flex gap-2">
-                        <input type="text" id="search-input" placeholder="Search projects..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:border-orange-500 transition">
-                        <button type="submit" class="bg-slate-700 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition"><i class="fa-solid fa-magnifying-glass"></i></button>
+                <div id="search-container" class="flex-grow max-w-lg w-full relative group">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-magnifying-glass text-slate-500 group-focus-within:text-orange-500 transition"></i>
+                    </div>
+                    <form onsubmit="handleSearch(event)">
+                        <input type="text" id="search-input" placeholder="Search projects, games, animations..." 
+                            class="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition shadow-sm">
                     </form>
                 </div>
+                
                 <!-- Auth -->
-                <div id="auth-section" class="flex items-center gap-4 min-w-fit">
-                    <button id="btn-login" onclick="loginWithWorker()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2 text-sm"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
-                    <div id="user-info" class="hidden flex items-center gap-3">
-                        <span class="text-sm text-slate-300 hidden sm:inline">Hi, <span id="username-display" class="font-bold text-white">User</span></span>
-                        <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 underline">Logout</button>
+                <div id="auth-section" class="flex items-center gap-3 min-w-fit">
+                    <button id="btn-login" onclick="loginWithWorker()" class="bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2 px-5 rounded-xl transition shadow-lg shadow-orange-900/20 flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-right-to-bracket"></i> Login
+                    </button>
+                    <div id="user-info" class="hidden flex items-center gap-4 bg-slate-800/50 px-4 py-1.5 rounded-full border border-white/5">
+                        <span class="text-sm text-slate-300">Hi, <span id="username-display" class="font-bold text-white">User</span></span>
+                        <div class="w-px h-4 bg-slate-700"></div>
+                        <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 font-medium">Logout</button>
                     </div>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- VIEWS CONTAINER -->
-    <main class="flex-grow container mx-auto px-4 py-8 relative">
+    <!-- MAIN CONTAINER -->
+    <main class="flex-grow relative">
         
-        <!-- 1. HOME VIEW (Grid) -->
-        <div id="home-view" class="view-section active">
-            <!-- Filters -->
-            <div class="mb-6 flex gap-4 overflow-x-auto whitespace-nowrap custom-scrollbar pb-2">
-                <span class="text-slate-400 text-sm font-bold uppercase self-center mr-2"><i class="fa-solid fa-arrow-down-short-wide mr-1"></i> Sort By:</span>
-                <button onclick="sortGrid('default')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition active-sort" id="sort-default">Trending</button>
-                <button onclick="sortGrid('best')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-green-900 text-xs text-green-400 border border-slate-700 transition" id="sort-best">Best Rated</button>
-                <button onclick="sortGrid('worst')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-red-900 text-xs text-red-400 border border-slate-700 transition" id="sort-worst">Worst Rated</button>
-                <button onclick="sortGrid('most-voted')" class="sort-btn px-3 py-1 rounded-full bg-slate-800 hover:bg-blue-900 text-xs text-blue-400 border border-slate-700 transition" id="sort-most-voted">Most Voted</button>
+        <!-- 1. HOME VIEW -->
+        <div id="home-view" class="view-section active container mx-auto px-4 py-8">
+            <!-- Filter Pills -->
+            <div class="mb-8 flex gap-3 overflow-x-auto whitespace-nowrap custom-scrollbar pb-2 items-center">
+                <span class="text-slate-500 text-xs font-bold uppercase tracking-wider mr-2">Sort By</span>
+                <button onclick="sortGrid('default')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-slate-300 border border-slate-700 transition active-sort hover:shadow-lg" id="sort-default">Trending</button>
+                <button onclick="sortGrid('best')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-green-400 border border-slate-700 transition hover:border-green-500/30" id="sort-best"><i class="fa-solid fa-star mr-1"></i> Top Rated</button>
+                <button onclick="sortGrid('worst')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-red-400 border border-slate-700 transition hover:border-red-500/30" id="sort-worst">Lowest Rated</button>
+                <button onclick="sortGrid('most-voted')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-blue-400 border border-slate-700 transition hover:border-blue-500/30" id="sort-most-voted">Most Activity</button>
             </div>
 
-            <div id="loading" class="flex flex-col items-center justify-center py-20">
-                <div class="loader mb-4"></div>
-                <p class="text-slate-400 animate-pulse">Loading Projects...</p>
+            <div id="loading" class="flex flex-col items-center justify-center py-32">
+                <div class="loader mb-6"></div>
+                <p class="text-slate-400 font-medium animate-pulse">Fetching awesome projects...</p>
             </div>
             
             <div id="projects-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 hidden"></div>
-            <p id="no-results" class="hidden text-center text-slate-500 mt-10">No projects found.</p>
+            
+            <div id="no-results" class="hidden flex flex-col items-center justify-center py-20 text-slate-500">
+                <i class="fa-regular fa-folder-open text-6xl mb-4 opacity-50"></i>
+                <p class="text-lg">No projects found.</p>
+            </div>
         </div>
 
-        <!-- 2. PROJECT VIEW (Details Page) -->
-        <div id="project-view" class="view-section">
-            <!-- Back Button -->
-            <button onclick="navigateHome()" class="mb-4 text-slate-400 hover:text-white flex items-center gap-2 transition">
-                <i class="fa-solid fa-arrow-left"></i> Back to Trending
-            </button>
+        <!-- 2. PROJECT VIEW (Immersive) -->
+        <div id="project-view" class="view-section relative min-h-screen pb-20">
+            
+            <!-- Dynamic Backdrop -->
+            <div id="project-background" class="absolute inset-0 bg-cover bg-center opacity-20 blur-[80px] pointer-events-none transition-all duration-1000 z-0"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-[#0f172a]/80 via-[#0f172a]/95 to-[#0f172a] pointer-events-none z-0"></div>
 
-            <div class="flex flex-col lg:flex-row gap-8">
-                
-                <!-- Left Column: Game & Info -->
-                <div class="w-full lg:w-2/3 flex flex-col gap-6">
-                    <!-- Iframe -->
-                    <div class="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-700 relative">
-                        <iframe id="page-iframe" class="w-full h-full" src="" allowtransparency="true" allowfullscreen allow="autoplay; microphone; camera"></iframe>
-                    </div>
+            <div class="relative container mx-auto px-4 py-6 z-10">
+                <!-- Navigation -->
+                <button onclick="navigateHome()" class="group mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition w-fit px-4 py-2 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10">
+                    <i class="fa-solid fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+                    <span class="font-medium">Back to Trending</span>
+                </button>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
-                    <!-- Header Info -->
-                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h1 id="page-title" class="text-3xl font-bold text-white mb-2">Project Title</h1>
-                                <p class="text-slate-400">Created by <span id="page-author" class="text-orange-400 font-bold cursor-pointer">User</span></p>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-400 font-mono" id="page-id">ID: 000</span>
-                            </div>
-                        </div>
+                    <!-- LEFT COLUMN: Content (8 cols) -->
+                    <div class="lg:col-span-8 flex flex-col gap-8">
                         
-                        <!-- Description -->
-                        <div class="mt-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
-                            <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Instructions & Notes</h3>
-                            <p id="page-desc" class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">...</p>
-                        </div>
-                    </div>
-
-                    <!-- Reviews List -->
-                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                        <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                            <i class="fa-solid fa-comments text-slate-400"></i> Reviews
-                        </h2>
-                        <div id="reviews-list" class="flex flex-col gap-4">
-                            <!-- Reviews injected here -->
-                            <p class="text-slate-500 italic">No reviews yet. Be the first!</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Column: Stats & Voting -->
-                <div class="w-full lg:w-1/3 flex flex-col gap-6">
-                    
-                    <!-- Score Card -->
-                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-4 opacity-5"><i class="fa-solid fa-star text-8xl"></i></div>
-                        <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-4 tracking-wider">COMMUNITY SCORE</h3>
-                        
-                        <div class="flex items-center gap-6">
-                            <div class="relative w-24 h-24 flex items-center justify-center">
-                                <svg class="transform -rotate-90 w-24 h-24"><circle cx="48" cy="48" r="40" stroke="#334155" stroke-width="8" fill="transparent" /><circle id="page-circle" cx="48" cy="48" r="40" stroke="#fbbf24" stroke-width="8" fill="transparent" stroke-dasharray="251" stroke-dashoffset="251" /></svg>
-                                <span id="page-rating-text" class="absolute text-2xl font-bold text-white">?</span>
-                            </div>
-                            <div>
-                                <div class="text-4xl font-bold text-white mb-1" id="page-score-display">--</div>
-                                <div class="text-sm text-slate-400"><span id="page-vote-count" class="font-bold text-white">0</span> votes</div>
-                            </div>
-                        </div>
-
-                        <!-- Stats Grid -->
-                        <div class="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-700">
-                            <div class="text-center bg-slate-900/50 p-2 rounded">
-                                <i class="fa-regular fa-eye text-blue-400"></i>
-                                <div class="font-bold text-white" id="page-views">0</div>
-                                <div class="text-[10px] text-slate-500 uppercase">Views</div>
-                            </div>
-                            <div class="text-center bg-slate-900/50 p-2 rounded">
-                                <i class="fa-regular fa-heart text-pink-500"></i>
-                                <div class="font-bold text-white" id="page-loves">0</div>
-                                <div class="text-[10px] text-slate-500 uppercase">Loves</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Voting Panel -->
-                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                        <h3 class="text-sm font-uppercase text-slate-400 font-bold mb-4 tracking-wider">WRITE A REVIEW</h3>
-                        
-                        <div id="vote-area" class="opacity-50 pointer-events-none transition-opacity">
-                            <!-- Stars -->
-                            <div class="flex justify-between mb-2 px-1">
-                                <span class="text-[10px] text-slate-500 font-bold">WORST</span>
-                                <span class="text-[10px] text-slate-500 font-bold">BEST</span>
-                            </div>
-                            <div class="grid grid-cols-10 gap-1 mb-4" id="stars-container"></div>
-                            <p id="vote-msg" class="text-center text-sm font-bold text-slate-300 mb-4 h-5">Select a rating</p>
+                        <!-- The Stage (Iframe) -->
+                        <div class="relative group">
+                            <!-- Glow Effect -->
+                            <div class="absolute -inset-0.5 bg-gradient-to-r from-orange-600 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000"></div>
                             
-                            <!-- Comment Input -->
-                            <textarea id="review-comment" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white placeholder-slate-600 focus:border-orange-500 focus:outline-none transition mb-3" rows="3" placeholder="Write your opinion here (optional)..."></textarea>
-                            
-                            <!-- Submit Button -->
-                            <button onclick="submitReview()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg transition">
-                                Post Review
-                            </button>
+                            <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-700/50">
+                                <iframe id="page-iframe" class="w-full h-full" src="" allowtransparency="true" allowfullscreen allow="autoplay; microphone; camera"></iframe>
+                            </div>
                         </div>
-                        
-                        <div id="login-warning" class="bg-slate-900/50 p-4 rounded-lg text-center border border-slate-700">
-                            <p class="text-orange-400 text-sm mb-2">Login with Scratch to review</p>
-                            <button onclick="loginWithWorker()" class="text-xs underline text-slate-400 hover:text-white">Login now</button>
+
+                        <!-- Project Info Card -->
+                        <div class="glass-panel p-6 sm:p-8 rounded-2xl shadow-xl">
+                            <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+                                <div>
+                                    <h1 id="page-title" class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2 leading-tight">Project Title</h1>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
+                                            <i class="fa-solid fa-user text-orange-400 text-xs"></i>
+                                            <span id="page-author" class="text-sm font-semibold text-slate-200">User</span>
+                                        </div>
+                                        <span class="text-xs font-mono text-slate-500 bg-slate-900/50 px-2 py-1 rounded" id="page-id">ID: 000</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Mini Stats -->
+                                <div class="flex gap-3">
+                                    <div class="flex flex-col items-center bg-slate-800/50 px-4 py-2 rounded-lg border border-white/5 min-w-[70px]">
+                                        <i class="fa-regular fa-eye text-blue-400 text-sm mb-1"></i>
+                                        <span id="page-views" class="font-bold text-white text-sm">0</span>
+                                    </div>
+                                    <div class="flex flex-col items-center bg-slate-800/50 px-4 py-2 rounded-lg border border-white/5 min-w-[70px]">
+                                        <i class="fa-solid fa-heart text-pink-500 text-sm mb-1"></i>
+                                        <span id="page-loves" class="font-bold text-white text-sm">0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="border-white/5 my-6">
+
+                            <div class="prose prose-invert max-w-none">
+                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <i class="fa-solid fa-align-left text-orange-500"></i> Instructions & Notes
+                                </h3>
+                                <div class="bg-slate-900/40 p-5 rounded-xl border border-white/5">
+                                    <p id="page-desc" class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed font-light">...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reviews Section -->
+                        <div class="glass-panel p-6 sm:p-8 rounded-2xl shadow-xl">
+                            <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                                <span class="bg-green-500/10 text-green-400 p-2 rounded-lg"><i class="fa-solid fa-comments"></i></span>
+                                Community Reviews
+                            </h3>
+                            
+                            <div id="reviews-list" class="flex flex-col gap-4">
+                                <!-- Reviews will load here -->
+                            </div>
                         </div>
                     </div>
 
+                    <!-- RIGHT COLUMN: Interactive (4 cols) -->
+                    <div class="lg:col-span-4 flex flex-col gap-6 sticky top-24">
+                        
+                        <!-- Score Card -->
+                        <div class="glass-panel p-6 rounded-2xl shadow-2xl relative overflow-hidden group">
+                            <!-- Animated Background Blob -->
+                            <div class="absolute -top-12 -right-12 w-40 h-40 bg-orange-500/20 rounded-full blur-3xl group-hover:bg-orange-500/30 transition duration-1000"></div>
+                            
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 relative z-10">Community Score</h3>
+                            
+                            <div class="flex flex-col items-center relative z-10">
+                                <div class="relative w-40 h-40 flex items-center justify-center mb-4">
+                                    <svg class="transform -rotate-90 w-40 h-40 drop-shadow-xl">
+                                        <circle cx="80" cy="80" r="70" stroke="#1e293b" stroke-width="12" fill="transparent" />
+                                        <circle id="page-circle" cx="80" cy="80" r="70" stroke="#facc15" stroke-width="12" fill="transparent" stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round" class="transition-all duration-1000 ease-out" />
+                                    </svg>
+                                    <div class="absolute flex flex-col items-center">
+                                        <span id="page-rating-text" class="text-4xl font-black text-white tracking-tighter">?</span>
+                                        <span class="text-xs font-bold text-slate-500 uppercase mt-1">Rating</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-center">
+                                    <div class="text-xl text-white font-bold mb-1 flex items-center justify-center gap-2">
+                                        <span id="page-score-display">--</span> <span class="text-yellow-500">★</span>
+                                    </div>
+                                    <div class="text-sm text-slate-400 bg-slate-900/60 px-3 py-1 rounded-full border border-white/5 inline-block">
+                                        Based on <span id="page-vote-count" class="font-bold text-white">0</span> votes
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Voting & Input Panel -->
+                        <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Rate & Review</h3>
+                            
+                            <div id="vote-area" class="transition-opacity duration-300">
+                                <div class="flex justify-between mb-2 text-[10px] uppercase font-bold text-slate-500 tracking-wider px-1">
+                                    <span>Bad</span>
+                                    <span>Awesome</span>
+                                </div>
+                                
+                                <!-- Stars Grid -->
+                                <div class="grid grid-cols-10 gap-1 mb-6 bg-slate-900/50 p-2 rounded-xl border border-white/5" id="stars-container"></div>
+                                
+                                <p id="vote-msg" class="text-center text-xs font-bold text-orange-400 h-4 mb-4 transition-colors"></p>
+                                
+                                <textarea id="review-comment" class="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition mb-3 resize-y min-h-[80px]" placeholder="What did you think? (Optional)"></textarea>
+                                
+                                <button onclick="submitReview()" class="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-2.5 rounded-xl transition shadow-lg shadow-orange-900/20 active:scale-95">
+                                    Post Review
+                                </button>
+                            </div>
+                            
+                            <!-- Login Wall -->
+                            <div id="login-warning" class="bg-slate-900/60 p-5 rounded-xl text-center border border-white/10 mt-2">
+                                <div class="bg-orange-500/10 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3 text-orange-500">
+                                    <i class="fa-solid fa-lock"></i>
+                                </div>
+                                <p class="text-slate-300 text-sm mb-3 font-medium">Login to rate & review</p>
+                                <button onclick="loginWithWorker()" class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 transition">Login with Scratch</button>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
@@ -195,33 +261,25 @@
     </main>
 
     <script>
-        // --- CONFIGURATION ---
-        const WORKER_URL = "https://scratchrate.logise1123.workers.dev"; // CHANGE THIS
+        // CONFIGURATION
+        const WORKER_URL = "https://scratchrate.logise1123.workers.dev"; // TU WORKER
         const PROXY = "https://api.allorigins.win/raw?url=";
         const API_TRENDING = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=trending&q=*";
         const API_SEARCH_BASE = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=popular&q=";
 
-        // --- STATE ---
-        let currentProject = null;
-        let sessionToken = null;
-        let currentUser = null;
-        let projectsData = [];
-        let projectsStatsCache = {}; // { id: { average, count, reviews: [] } }
-        let currentRating = 0; // Temporary storage for voting
+        let currentProject = null, sessionToken = null, currentUser = null;
+        let projectsData = [], projectsStatsCache = {}, currentRating = 0;
 
-        // --- INIT ---
         window.addEventListener('DOMContentLoaded', () => {
             generateStarsUI();
             checkAuth();
-            handleRouting(); // Check URL hash on load
-            
-            // If home, fetch initial
+            handleRouting();
             if(!location.hash.startsWith('#project-')) fetchProjects();
         });
 
         window.addEventListener('hashchange', handleRouting);
 
-        // --- ROUTING (SPA) ---
+        // --- ROUTING ---
         function handleRouting() {
             const hash = location.hash;
             if (hash.startsWith('#project-')) {
@@ -232,17 +290,14 @@
             }
         }
 
-        function navigateHome() {
-            window.location.hash = ""; // Triggers handleRouting -> showHomePage
-        }
+        function navigateHome() { window.location.hash = ""; }
 
         function showHomePage() {
             document.getElementById('home-view').classList.add('active');
             document.getElementById('project-view').classList.remove('active');
             document.getElementById('search-container').classList.remove('hidden');
-            
-            // Stop iframe to stop audio
-            document.getElementById('page-iframe').src = "";
+            document.getElementById('page-iframe').src = ""; // Stop video
+            document.body.style.overflow = "auto";
             
             if(projectsData.length === 0) fetchProjects();
         }
@@ -250,21 +305,19 @@
         async function showProjectPage(id) {
             document.getElementById('home-view').classList.remove('active');
             document.getElementById('project-view').classList.add('active');
-            document.getElementById('search-container').classList.add('hidden'); // Clean header
-            
-            // Find project data (from cache or fetch if direct link)
+            document.getElementById('search-container').classList.add('hidden');
+            window.scrollTo(0,0);
+
+            // Fetch or find project
             let p = projectsData.find(x => x.id == id);
-            
-            // If direct access or not found in trending, fetch individual
             if (!p) {
                 try {
                     const res = await fetch(`${WORKER_URL}/proxy?url=${encodeURIComponent(`https://api.scratch.mit.edu/projects/${id}`)}`);
                     if(!res.ok) throw new Error("Not found");
                     p = await res.json();
-                    // Normalize data structure if needed (Scratch API individual vs grid differs slightly)
-                    if(!p.author) p.author = { username: p.username || "Unknown" }; // Polyfill
+                    if(!p.author) p.author = { username: p.username || "Unknown" };
                 } catch(e) {
-                    alert("Project not found or API error.");
+                    alert("Project not found.");
                     navigateHome();
                     return;
                 }
@@ -274,9 +327,13 @@
             renderProjectDetails(p);
         }
 
-        // --- RENDER PROJECT ---
+        // --- RENDER PAGE ---
         function renderProjectDetails(p) {
-            // Basic Info
+            // Dynamic Background
+            const thumbUrl = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
+            document.getElementById('project-background').style.backgroundImage = `url('${thumbUrl}')`;
+
+            // Info
             document.getElementById('page-title').textContent = p.title;
             document.getElementById('page-author').textContent = p.author.username;
             document.getElementById('page-id').textContent = `ID: ${p.id}`;
@@ -285,27 +342,26 @@
             document.getElementById('page-views').textContent = formatNum(p.stats.views);
             document.getElementById('page-loves').textContent = formatNum(p.stats.loves);
 
-            // Reset Rating UI
+            // Reset Interactions
             updatePageRating(0, 0, true);
             resetStars();
             document.getElementById('review-comment').value = "";
-            document.getElementById('reviews-list').innerHTML = '<div class="loader mx-auto"></div>';
+            document.getElementById('reviews-list').innerHTML = '<div class="flex justify-center py-8"><div class="loader"></div></div>';
 
-            // Fetch Real Stats & Reviews
             fetchProjectStatsAndReviews(p.id);
         }
 
+        // --- FETCHING & DATA ---
         async function fetchProjectStatsAndReviews(id) {
             try {
                 const res = await fetch(`${WORKER_URL}/stats?id=${id}`);
-                const data = await res.json(); // { average, count, reviews: [...] }
+                const data = await res.json();
                 
-                projectsStatsCache[id] = data; // Update cache
+                projectsStatsCache[id] = data;
                 updatePageRating(Number(data.average), Number(data.count));
                 renderReviews(data.reviews || []);
             } catch(e) {
-                console.error(e);
-                document.getElementById('reviews-list').innerHTML = '<p class="text-red-400">Error loading reviews.</p>';
+                document.getElementById('reviews-list').innerHTML = '<p class="text-center text-red-400 py-4">Failed to load reviews.</p>';
             }
         }
 
@@ -314,27 +370,35 @@
             list.innerHTML = '';
             
             if (reviews.length === 0) {
-                list.innerHTML = '<p class="text-slate-500 italic text-center py-4">No reviews yet. Be the first!</p>';
+                list.innerHTML = `
+                    <div class="text-center py-10 opacity-50">
+                        <i class="fa-regular fa-comments text-4xl mb-2"></i>
+                        <p>No reviews yet. Be the first!</p>
+                    </div>`;
                 return;
             }
 
             reviews.forEach(r => {
-                // Color for rating badge
-                let colorClass = r.rating >= 8 ? 'bg-green-900 text-green-300 border-green-700' : (r.rating >= 5 ? 'bg-yellow-900 text-yellow-300 border-yellow-700' : 'bg-red-900 text-red-300 border-red-700');
+                let colorClass = r.rating >= 8 ? 'bg-green-500/20 text-green-400 border-green-500/30' : (r.rating >= 5 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30');
                 
                 const item = document.createElement('div');
-                item.className = "bg-slate-900 p-4 rounded-lg border border-slate-700 flex flex-col gap-2";
+                item.className = "bg-slate-900/40 p-4 rounded-xl border border-white/5 flex flex-col gap-2 transition hover:bg-slate-900/60";
                 item.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-white">${r.username}</span>
-                            <span class="text-xs text-slate-500">${new Date(r.timestamp).toLocaleDateString()}</span>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold border border-white/5">
+                                ${r.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-200 text-sm">${r.username}</div>
+                                <div class="text-[10px] text-slate-500">${new Date(r.timestamp).toLocaleDateString()}</div>
+                            </div>
                         </div>
-                        <div class="${colorClass} px-2 py-0.5 rounded text-xs font-bold border flex items-center gap-1">
+                        <div class="${colorClass} px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5">
                             <i class="fa-solid fa-star text-[10px]"></i> ${r.rating}
                         </div>
                     </div>
-                    ${r.comment ? `<p class="text-slate-300 text-sm mt-1">${escapeHtml(r.comment)}</p>` : ''}
+                    ${r.comment ? `<p class="text-slate-300 text-sm mt-1 pl-11 leading-relaxed">${escapeHtml(r.comment)}</p>` : ''}
                 `;
                 list.appendChild(item);
             });
@@ -347,17 +411,17 @@
             document.getElementById('page-vote-count').textContent = count;
 
             if(reset) {
-                circle.style.strokeDashoffset = 251; // 251 is circ of r=40
+                circle.style.strokeDashoffset = 440; // Circ for r=70 is ~440
                 scoreDisplay.textContent = "--";
                 ratingText.textContent = "?";
                 return;
             }
 
-            scoreDisplay.textContent = avg.toFixed(1) + " / 10";
+            scoreDisplay.textContent = avg.toFixed(1);
             ratingText.textContent = avg.toFixed(1);
             
             const pct = (avg / 10) * 100;
-            const offset = 251 - (251 * pct) / 100;
+            const offset = 440 - (440 * pct) / 100;
             circle.style.strokeDashoffset = offset;
             
             if(avg >= 8) circle.setAttribute('stroke', '#4ade80');
@@ -365,15 +429,15 @@
             else circle.setAttribute('stroke', '#f87171');
         }
 
-        // --- VOTING SYSTEM ---
+        // --- STARS UI ---
         function generateStarsUI() {
             const c = document.getElementById('stars-container');
             c.innerHTML = '';
             for(let i=1; i<=10; i++) {
                 const b = document.createElement('i');
-                b.className = `star-btn fa-solid fa-star text-slate-700 text-xl flex justify-center`;
+                b.className = `star-btn fa-solid fa-star text-slate-700 text-lg flex justify-center py-1`;
                 b.id = `s${i}`;
-                b.onclick = () => { currentRating = i; highlightStars(i); document.getElementById('vote-msg').textContent = `Rating: ${i}/10`; };
+                b.onclick = () => { currentRating = i; highlightStars(i); document.getElementById('vote-msg').textContent = `Your Rating: ${i}/10`; };
                 b.onmouseover = () => { highlightStars(i); document.getElementById('vote-msg').textContent = `${i}/10`; };
                 b.onmouseout = () => { if(currentRating===0) resetStars(); else highlightStars(currentRating); };
                 c.appendChild(b);
@@ -381,13 +445,16 @@
         }
 
         function highlightStars(num) {
+            const msg = document.getElementById('vote-msg');
+            msg.className = "text-center text-xs font-bold h-4 mb-4 transition-colors"; // Reset
+            
             for(let j=1; j<=10; j++) {
                 const s = document.getElementById(`s${j}`);
                 s.classList.remove('text-slate-700', 'text-yellow-400', 'text-green-400', 'text-red-400');
                 if (j <= num) {
-                    if (num <= 4) s.classList.add('text-red-400');
-                    else if (num <= 7) s.classList.add('text-yellow-400');
-                    else s.classList.add('text-green-400');
+                    if (num <= 4) { s.classList.add('text-red-400'); if(j===num) msg.classList.add('text-red-400'); }
+                    else if (num <= 7) { s.classList.add('text-yellow-400'); if(j===num) msg.classList.add('text-yellow-400'); }
+                    else { s.classList.add('text-green-400'); if(j===num) msg.classList.add('text-green-400'); }
                 } else {
                     s.classList.add('text-slate-700');
                 }
@@ -395,8 +462,9 @@
         }
 
         function resetStars() {
-            document.getElementById('vote-msg').textContent = "Select rating";
-            for(let j=1; j<=10; j++) document.getElementById(`s${j}`).className = `star-btn fa-solid fa-star text-slate-700 text-xl flex justify-center`;
+            document.getElementById('vote-msg').textContent = "Select a rating";
+            document.getElementById('vote-msg').className = "text-center text-xs font-bold text-slate-500 h-4 mb-4";
+            for(let j=1; j<=10; j++) document.getElementById(`s${j}`).className = `star-btn fa-solid fa-star text-slate-700 text-lg flex justify-center py-1`;
         }
 
         async function submitReview() {
@@ -409,6 +477,7 @@
             
             btn.disabled = true;
             btn.textContent = "Posting...";
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
 
             try {
                 const res = await fetch(`${WORKER_URL}/vote`, {
@@ -423,29 +492,26 @@
                 });
 
                 if(res.ok) {
-                    // Reload details to show new review
                     fetchProjectStatsAndReviews(currentProject.id);
-                    // Also update grid cache
-                    fetchCardStats(currentProject.id);
-                    
-                    document.getElementById('review-comment').value = ""; // Clear
+                    fetchCardStats(currentProject.id); // Update home grid cache
+                    document.getElementById('review-comment').value = "";
                     btn.textContent = "Review Posted!";
                     setTimeout(() => {
                         btn.disabled = false;
                         btn.textContent = "Post Review";
+                        btn.classList.remove('opacity-75', 'cursor-not-allowed');
                     }, 2000);
-                } else {
-                    throw new Error("Failed");
-                }
+                } else { throw new Error("Failed"); }
             } catch(e) {
                 console.error(e);
-                alert("Error posting review. Try again.");
+                alert("Error posting review.");
                 btn.disabled = false;
                 btn.textContent = originalText;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
             }
         }
 
-        // --- GRID & FETCHING (Original Logic Adapted) ---
+        // --- GENERAL LOGIC (Proxy, Search, etc) ---
         async function fetchWithProxy(targetUrl) {
             const proxyUrl = `${WORKER_URL}/proxy?url=${encodeURIComponent(targetUrl)}`;
             const res = await fetch(proxyUrl);
@@ -465,21 +531,13 @@
         async function fetchProjects(url = API_TRENDING) {
             try {
                 const data = await fetchWithProxy(url);
-                if(!data || data.length === 0) {
-                    toggleLoading(false, true);
-                    projectsData = [];
-                    return;
-                }
+                if(!data || data.length === 0) { toggleLoading(false, true); projectsData = []; return; }
                 projectsData = data;
-                
-                // Batch stats
                 const ids = data.map(p => p.id);
                 fetchBatchStats(ids);
-
                 renderGrid(projectsData);
                 toggleLoading(false);
             } catch (e) {
-                console.error(e);
                 document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading Scratch API.</p>";
             }
         }
@@ -490,18 +548,16 @@
                 if(res.ok) {
                     const batchData = await res.json();
                     Object.assign(projectsStatsCache, batchData);
-                    renderGrid(projectsData); // Re-render to show badges
+                    renderGrid(projectsData); // Re-render badges
                 }
             } catch(e) {}
         }
 
         async function fetchCardStats(id) {
-             // For single card update
              try {
                 const res = await fetch(`${WORKER_URL}/stats?id=${id}`);
                 const data = await res.json();
                 projectsStatsCache[id] = data;
-                // Ideally update just that DOM element, but re-render is safe here
              } catch(e) {}
         }
 
@@ -510,37 +566,47 @@
             grid.innerHTML = '';
             projects.forEach(p => {
                 const card = document.createElement('div');
-                card.className = "project-card bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative flex flex-col";
-                card.onclick = () => window.location.hash = `project-${p.id}`; // NAVIGATE
+                card.className = "project-card bg-slate-800 rounded-xl overflow-hidden border border-slate-700 relative flex flex-col h-full";
+                card.onclick = () => window.location.hash = `project-${p.id}`;
                 const img = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
                 
-                // Badge Logic
+                // Badge Logic (Visible > 5 votes)
                 const stats = projectsStatsCache[p.id] || { count: 0, average: 0 };
                 let badgeHtml = '';
                 if(stats.count >= 5) {
-                    let color = stats.average >= 8 ? 'text-green-400' : (stats.average >= 5 ? 'text-yellow-400' : 'text-red-400');
-                    let border = stats.average >= 8 ? 'border-green-500' : (stats.average >= 5 ? 'border-yellow-500' : 'border-red-500');
-                    badgeHtml = `<div class="absolute top-2 left-2 bg-black/80 px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 backdrop-blur-sm border ${border} ${color}">
-                        <i class="fa-solid fa-star text-[10px]"></i><span>${Number(stats.average).toFixed(1)}</span></div>`;
+                    let color = stats.average >= 8 ? 'bg-green-500 text-white' : (stats.average >= 5 ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white');
+                    badgeHtml = `<div class="absolute top-2 left-2 ${color} px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg flex items-center gap-1">
+                        <i class="fa-solid fa-star text-[8px]"></i> ${Number(stats.average).toFixed(1)}
+                    </div>`;
                 }
 
                 card.innerHTML = `
                     <div class="relative w-full aspect-[4/3] bg-black">
                         <img src="${img}" class="w-full h-full object-cover" loading="lazy">
-                        <div class="absolute bottom-2 right-2 bg-black/60 px-2 rounded text-xs text-white backdrop-blur-sm"><i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}</div>
+                        <div class="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white backdrop-blur-sm flex items-center gap-1">
+                            <i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}
+                        </div>
                         ${badgeHtml}
                     </div>
-                    <div class="p-3 flex-grow">
-                        <h3 class="font-bold text-white truncate text-sm mb-1">${p.title}</h3>
-                        <p class="text-xs text-slate-400">by ${p.author.username}</p>
+                    <div class="p-4 flex-grow flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-100 truncate text-sm mb-1" title="${p.title}">${p.title}</h3>
+                            <p class="text-xs text-slate-400">by <span class="text-orange-400">${p.author.username}</span></p>
+                        </div>
                     </div>`;
                 grid.appendChild(card);
             });
         }
 
         function sortGrid(mode) {
-            document.querySelectorAll('.sort-btn').forEach(b => b.classList.replace('bg-slate-600', 'bg-slate-800'));
-            document.getElementById(`sort-${mode}`).classList.replace('bg-slate-800', 'bg-slate-600');
+            document.querySelectorAll('.sort-btn').forEach(b => {
+                b.classList.remove('bg-slate-700', 'border-slate-500', 'text-white', 'shadow-lg');
+                b.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
+            });
+            const btn = document.getElementById(`sort-${mode}`);
+            btn.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-700');
+            btn.classList.add('bg-slate-700', 'border-slate-500', 'text-white', 'shadow-lg');
+
             let sorted = [...projectsData];
             if (mode !== 'default') {
                 sorted = sorted.filter(p => (projectsStatsCache[p.id]?.count || 0) > 0);
@@ -551,14 +617,17 @@
             renderGrid(sorted);
         }
 
-        // --- AUTH & UTILS ---
+        function toggleLoading(show, empty=false) {
+            const l = document.getElementById('loading');
+            const g = document.getElementById('projects-grid');
+            const n = document.getElementById('no-results');
+            if(show) { l.classList.remove('hidden'); g.classList.add('hidden'); n.classList.add('hidden'); }
+            else { l.classList.add('hidden'); g.classList.toggle('hidden', empty); n.classList.toggle('hidden', !empty); }
+        }
+
         function checkAuth() {
             const p = new URLSearchParams(location.search);
-            if(p.get('token')) {
-                localStorage.setItem('s_tok', p.get('token'));
-                localStorage.setItem('s_usr', p.get('username'));
-                history.replaceState({},'', '/');
-            }
+            if(p.get('token')) { localStorage.setItem('s_tok', p.get('token')); localStorage.setItem('s_usr', p.get('username')); history.replaceState({},'', '/'); }
             sessionToken = localStorage.getItem('s_tok');
             currentUser = localStorage.getItem('s_usr');
             if(sessionToken) {
@@ -571,14 +640,6 @@
         }
         function loginWithWorker() { location.href = `${WORKER_URL}/auth/login`; }
         function logout() { localStorage.clear(); location.reload(); }
-        
-        function toggleLoading(show, empty=false) {
-            const l = document.getElementById('loading');
-            const g = document.getElementById('projects-grid');
-            const n = document.getElementById('no-results');
-            if(show) { l.classList.remove('hidden'); g.classList.add('hidden'); n.classList.add('hidden'); }
-            else { l.classList.add('hidden'); g.classList.toggle('hidden', empty); n.classList.toggle('hidden', !empty); }
-        }
         function formatNum(n) { return new Intl.NumberFormat('en-US', {notation:"compact"}).format(n); }
         function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
     </script>
