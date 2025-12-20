@@ -11,18 +11,15 @@
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
         
-        /* Animations */
         .view-section { display: none; opacity: 0; transition: opacity 0.4s ease-in-out; }
         .view-section.active { display: block; opacity: 1; }
 
         .project-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .project-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 25px -5px rgba(249, 115, 22, 0.3); border-color: #f97316; z-index: 10; }
         
-        /* Creator Card Hover */
         .creator-card { transition: all 0.3s; }
         .creator-card:hover { transform: translateY(-3px); background-color: rgba(30, 41, 59, 0.9); border-color: #f97316; }
 
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -103,10 +100,13 @@
             <!-- CREATORS SECTION -->
             <div id="creators-section" class="mb-10 hidden">
                 <h2 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-crown text-yellow-500"></i> Top Creators
+                    <i class="fa-solid fa-crown text-yellow-500"></i> Global Top Creators
                 </h2>
                 <div class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar" id="creators-list">
                     <!-- Creator cards injected here -->
+                    <div class="flex items-center justify-center w-full py-4 text-slate-500 text-sm italic">
+                        <div class="loader w-6 h-6 border-2 mr-2"></div> Loading global rankings...
+                    </div>
                 </div>
             </div>
 
@@ -296,6 +296,9 @@
             document.getElementById('page-iframe').src = "";
             document.body.style.overflow = "auto";
             if(projectsData.length === 0) fetchProjects();
+            
+            // Trigger load of top creators
+            fetchTopCreators();
         }
 
         async function showProjectPage(id) {
@@ -468,7 +471,7 @@
                 if(!data||data.length===0) { toggleLoading(false,true); projectsData=[]; return; }
                 projectsData = data;
                 fetchBatchStats(data.map(p=>p.id));
-                renderTopCreators(); // Calculate top creators!
+                // renderTopCreators(); // Removed here, called in showHomePage or separately
                 renderGrid(projectsData);
                 toggleLoading(false);
             } catch(e) { document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading data.</p>"; }
@@ -476,7 +479,7 @@
         async function fetchBatchStats(ids) {
             try {
                 const res = await fetch(`${WORKER_URL}/stats-batch`, {method:'POST', body:JSON.stringify({ids})});
-                if(res.ok) { Object.assign(projectsStatsCache, await res.json()); renderGrid(projectsData); renderTopCreators(); }
+                if(res.ok) { Object.assign(projectsStatsCache, await res.json()); renderGrid(projectsData); }
             } catch(e){}
         }
         async function fetchCardStats(id) { try { const r=await fetch(`${WORKER_URL}/stats?id=${id}`); projectsStatsCache[id]=await r.json(); } catch(e){} }
@@ -490,48 +493,60 @@
             });
         }
 
-        // --- NEW: TOP CREATORS LOGIC ---
-        function renderTopCreators() {
-            const creators = {};
-            projectsData.forEach(p => {
-                const author = p.author.username;
-                const stats = projectsStatsCache[p.id] || { average: 0, count: 0 };
-                if (!creators[author]) creators[author] = { id: p.author.id, username: author, totalScore: 0, projects: 0 };
-                // Score formula: Rating weighted by log of votes to prevent 1-vote wonders
-                if (stats.count > 0) {
-                    creators[author].totalScore += stats.average * Math.log10(stats.count + 1);
-                    creators[author].projects++;
-                }
-            });
+        // --- NEW: TOP CREATORS (Backend Fetch) ---
+        async function fetchTopCreators() {
+            try {
+                const res = await fetch(`${WORKER_URL}/top-creators`);
+                if (!res.ok) throw new Error("API Error");
+                const creators = await res.json();
+                renderTopCreators(creators);
+            } catch(e) {
+                console.error("Top creators fetch failed:", e);
+                document.getElementById('creators-section').classList.add('hidden');
+            }
+        }
 
-            // Convert to array and sort
-            const sortedCreators = Object.values(creators)
-                .filter(c => c.projects > 0)
-                .sort((a, b) => (b.totalScore / b.projects) - (a.totalScore / a.projects))
-                .slice(0, 8); // Top 8
-
+        function renderTopCreators(sortedCreators) {
             const list = document.getElementById('creators-list');
             const section = document.getElementById('creators-section');
             
-            if (sortedCreators.length === 0) { section.classList.add('hidden'); return; }
+            if (!sortedCreators || sortedCreators.length === 0) { section.classList.add('hidden'); return; }
             section.classList.remove('hidden');
             list.innerHTML = '';
 
             sortedCreators.forEach((c, index) => {
-                const score = (c.totalScore / c.projects).toFixed(1);
-                list.innerHTML += `
-                    <div class="creator-card min-w-[120px] bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2 cursor-pointer relative" onclick="window.open('https://scratch.mit.edu/users/${escapeHtml(c.username)}', '_blank')">
-                        <div class="absolute top-1 left-1 text-[10px] font-bold text-slate-500">#${index+1}</div>
-                        <img src="https://cdn2.scratch.mit.edu/get_image/user/${c.id}_60x60.png" class="w-12 h-12 rounded-full border-2 border-slate-600">
-                        <div class="text-center">
-                            <div class="font-bold text-slate-200 text-xs truncate max-w-[100px]">${c.username}</div>
-                            <div class="text-[10px] text-green-400 font-bold">Score: ${score}</div>
-                        </div>
+                const score = Number(c.score).toFixed(1);
+                // Try to find image in loaded projects, else fetch
+                let imgId = null;
+                // Simple optimization: look in current projects
+                const p = projectsData.find(proj => proj.author.username === c.username);
+                if (p) imgId = p.author.id;
+
+                const imgUrl = imgId ? `https://cdn2.scratch.mit.edu/get_image/user/${imgId}_60x60.png` : `https://cdn2.scratch.mit.edu/get_image/user/default_60x60.png`;
+
+                const card = document.createElement('div');
+                card.className = "creator-card min-w-[120px] bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2 cursor-pointer relative";
+                card.onclick = () => window.open(`https://scratch.mit.edu/users/${escapeHtml(c.username)}`, '_blank');
+                card.innerHTML = `
+                    <div class="absolute top-1 left-1 text-[10px] font-bold text-slate-500">#${index+1}</div>
+                    <img src="${imgUrl}" class="w-12 h-12 rounded-full border-2 border-slate-600 bg-slate-700" id="img-${index}">
+                    <div class="text-center">
+                        <div class="font-bold text-slate-200 text-xs truncate max-w-[100px]">${escapeHtml(c.username)}</div>
+                        <div class="text-[10px] text-green-400 font-bold">Score: ${score}</div>
                     </div>`;
+                list.appendChild(card);
+
+                // If we didn't have the ID, fetch it asynchronously
+                if (!imgId) {
+                    fetchWithProxy(`https://api.scratch.mit.edu/users/${c.username}`)
+                        .then(u => {
+                            if(u && u.id) {
+                                document.getElementById(`img-${index}`).src = `https://cdn2.scratch.mit.edu/get_image/user/${u.id}_60x60.png`;
+                            }
+                        }).catch(()=>{});
+                }
             });
         }
-
-        // Removed filterByCreator since it's no longer used
 
         function sortGrid(mode) {
             document.querySelectorAll('.sort-btn').forEach(b=>{ b.classList.remove('bg-slate-700','border-slate-500','text-white','shadow-lg'); b.classList.add('bg-slate-800','text-slate-300','border-slate-700'); });
