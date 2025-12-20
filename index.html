@@ -6,16 +6,23 @@
     <title>Scratch Rate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
         
+        /* Animations */
         .view-section { display: none; opacity: 0; transition: opacity 0.4s ease-in-out; }
         .view-section.active { display: block; opacity: 1; }
 
-        .project-card { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s; }
-        .project-card:hover { transform: translateY(-6px); box-shadow: 0 12px 24px -8px rgba(249, 115, 22, 0.4); border-color: #f97316; }
+        .project-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .project-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 25px -5px rgba(249, 115, 22, 0.3); border-color: #f97316; z-index: 10; }
         
+        /* Creator Card Hover */
+        .creator-card { transition: all 0.3s; }
+        .creator-card:hover { transform: translateY(-3px); background-color: rgba(30, 41, 59, 0.9); border-color: #f97316; }
+
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -25,95 +32,124 @@
         .loader { border: 4px solid #1e293b; border-top: 4px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        .star-btn { cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        .star-btn:hover { transform: scale(1.3) rotate(5deg); }
+        .star-btn { cursor: pointer; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .star-btn:hover { transform: scale(1.4) rotate(12deg); }
         
         .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#0f172a] overflow-x-hidden">
+<body class="min-h-screen flex flex-col bg-[#0f172a] overflow-x-hidden selection:bg-orange-500/30">
 
     <!-- Navbar -->
-    <header class="bg-slate-900/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
+    <header class="bg-slate-900/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
         <div class="container mx-auto px-4 py-3">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="flex items-center gap-3 cursor-pointer group" onclick="navigateHome()">
-                    <div class="bg-orange-500/10 p-2 rounded-lg group-hover:bg-orange-500/20 transition">
-                        <i class="fa-solid fa-cat text-2xl scratch-text"></i>
+                    <div class="bg-gradient-to-br from-orange-500 to-red-600 p-2 rounded-lg shadow-lg shadow-orange-500/20 group-hover:scale-105 transition duration-300">
+                        <i class="fa-solid fa-cat text-2xl text-white"></i>
                     </div>
-                    <h1 class="text-xl font-bold tracking-tight text-slate-100">Scratch <span class="scratch-text">Rate</span></h1>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-100 group-hover:text-white transition">Scratch <span class="text-orange-500">Rate</span></h1>
                 </div>
                 
+                <!-- Search -->
                 <div id="search-container" class="flex-grow max-w-lg w-full relative group">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-magnifying-glass text-slate-500 group-focus-within:text-orange-500 transition"></i>
                     </div>
                     <form onsubmit="handleSearch(event)">
                         <input type="text" id="search-input" placeholder="Search projects..." 
-                            class="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition shadow-sm">
+                            class="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition shadow-sm focus:bg-slate-800">
                     </form>
                 </div>
                 
-                <div id="auth-section" class="flex items-center gap-3 min-w-fit">
-                    <button id="btn-login" onclick="loginWithWorker()" class="bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2 px-5 rounded-xl transition shadow-lg shadow-orange-900/20 flex items-center gap-2 text-sm">
-                        <i class="fa-solid fa-right-to-bracket"></i> Login
+                <!-- Actions -->
+                <div class="flex items-center gap-3 min-w-fit">
+                    <button onclick="surpriseMe()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2.5 rounded-xl transition border border-white/5 group relative" title="Surprise Me!">
+                        <i class="fa-solid fa-dice text-lg group-hover:rotate-180 transition duration-500"></i>
                     </button>
-                    <div id="user-info" class="hidden flex items-center gap-4 bg-slate-800/50 px-4 py-1.5 rounded-full border border-white/5">
-                        <span class="text-sm text-slate-300">Hi, <span id="username-display" class="font-bold text-white">User</span></span>
-                        <div class="w-px h-4 bg-slate-700"></div>
-                        <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 font-medium">Logout</button>
+
+                    <div id="auth-section">
+                        <button id="btn-login" onclick="loginWithWorker()" class="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-semibold py-2 px-5 rounded-xl transition shadow-lg shadow-orange-900/20 flex items-center gap-2 text-sm active:scale-95">
+                            <i class="fa-solid fa-right-to-bracket"></i> Login
+                        </button>
+                        <div id="user-info" class="hidden flex items-center gap-4 bg-slate-800/50 px-4 py-1.5 rounded-full border border-white/5 hover:bg-slate-800 transition">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-orange-400 to-purple-500 flex items-center justify-center text-[10px] font-bold text-white">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <span id="username-display" class="font-bold text-slate-200 text-sm">User</span>
+                            </div>
+                            <div class="w-px h-4 bg-slate-700"></div>
+                            <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 font-medium hover:underline">Logout</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </header>
 
+    <!-- MAIN -->
     <main class="flex-grow relative">
         
         <!-- 1. HOME VIEW -->
         <div id="home-view" class="view-section active container mx-auto px-4 py-8">
-            <div class="mb-8 flex gap-3 overflow-x-auto whitespace-nowrap custom-scrollbar pb-2 items-center">
-                <span class="text-slate-500 text-xs font-bold uppercase tracking-wider mr-2">Sort By</span>
-                <button onclick="sortGrid('default')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-slate-300 border border-slate-700 transition active-sort hover:shadow-lg" id="sort-default">Trending</button>
-                <button onclick="sortGrid('best')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-green-400 border border-slate-700 transition hover:border-green-500/30" id="sort-best"><i class="fa-solid fa-star mr-1"></i> Top Rated</button>
+            
+            <!-- CREATORS SECTION (NEW) -->
+            <div id="creators-section" class="mb-10 hidden">
+                <h2 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-crown text-yellow-500"></i> Top Creators
+                </h2>
+                <div class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar" id="creators-list">
+                    <!-- Creator cards injected here -->
+                </div>
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="mb-8 flex flex-wrap gap-3 items-center">
+                <span class="text-slate-500 text-xs font-bold uppercase tracking-wider mr-2"><i class="fa-solid fa-filter mr-1"></i> Filter</span>
+                <button onclick="sortGrid('default')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-slate-300 border border-slate-700 transition active-sort hover:shadow-lg" id="sort-default">Trending 🔥</button>
+                <button onclick="sortGrid('best')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-green-400 border border-slate-700 transition hover:border-green-500/30" id="sort-best">Top Rated 💎</button>
                 <button onclick="sortGrid('worst')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-red-400 border border-slate-700 transition hover:border-red-500/30" id="sort-worst">Lowest Rated</button>
-                <button onclick="sortGrid('most-voted')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-blue-400 border border-slate-700 transition hover:border-blue-500/30" id="sort-most-voted">Most Activity</button>
+                <button onclick="sortGrid('most-voted')" class="sort-btn px-4 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-blue-400 border border-slate-700 transition hover:border-blue-500/30" id="sort-most-voted">Most Active 💬</button>
             </div>
 
             <div id="loading" class="flex flex-col items-center justify-center py-32">
-                <div class="loader mb-6"></div>
-                <p class="text-slate-400 font-medium animate-pulse">Fetching awesome projects...</p>
+                <div class="loader mb-6 shadow-[0_0_20px_rgba(249,115,22,0.5)]"></div>
+                <p class="text-slate-400 font-medium animate-pulse">Curating the best of Scratch...</p>
             </div>
             
             <div id="projects-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 hidden"></div>
             
             <div id="no-results" class="hidden flex flex-col items-center justify-center py-20 text-slate-500">
-                <i class="fa-regular fa-folder-open text-6xl mb-4 opacity-50"></i>
-                <p class="text-lg">No projects found.</p>
+                <div class="bg-slate-800/50 p-6 rounded-full mb-4">
+                    <i class="fa-regular fa-folder-open text-4xl opacity-50"></i>
+                </div>
+                <p class="text-lg font-medium">No projects found.</p>
+                <button onclick="fetchProjects()" class="mt-4 text-orange-400 hover:text-orange-300 underline">Refresh Trending</button>
             </div>
         </div>
 
         <!-- 2. PROJECT VIEW -->
         <div id="project-view" class="view-section relative min-h-screen pb-20">
-            <div id="project-background" class="absolute inset-0 bg-cover bg-center opacity-20 blur-[80px] pointer-events-none transition-all duration-1000 z-0"></div>
-            <div class="absolute inset-0 bg-gradient-to-b from-[#0f172a]/80 via-[#0f172a]/95 to-[#0f172a] pointer-events-none z-0"></div>
-
+            <div id="project-background" class="absolute inset-0 bg-cover bg-center opacity-30 blur-[100px] pointer-events-none transition-all duration-1000 z-0 scale-110"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-[#0f172a]/90 via-[#0f172a]/95 to-[#0f172a] pointer-events-none z-0"></div>
+            
             <div class="relative container mx-auto px-4 py-6 z-10">
-                <button onclick="navigateHome()" class="group mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition w-fit px-4 py-2 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10">
+                <button onclick="navigateHome()" class="group mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition w-fit px-4 py-2 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10 backdrop-blur-sm">
                     <i class="fa-solid fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="font-medium">Back to Trending</span>
+                    <span class="font-medium">Back</span>
                 </button>
 
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    
+                    <!-- Left Content -->
                     <div class="lg:col-span-8 flex flex-col gap-8">
                         <div class="relative group">
-                            <div class="absolute -inset-0.5 bg-gradient-to-r from-orange-600 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000"></div>
+                            <div class="absolute -inset-1 bg-gradient-to-r from-orange-600 via-pink-600 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-50 transition duration-1000"></div>
                             <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-700/50">
                                 <iframe id="page-iframe" class="w-full h-full" src="" allowtransparency="true" allowfullscreen allow="autoplay; microphone; camera"></iframe>
                             </div>
@@ -125,16 +161,15 @@
                                     <h1 id="page-title" class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2 leading-tight">...</h1>
                                     <div class="flex flex-wrap items-center gap-3">
                                         <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
-                                            <i class="fa-solid fa-user text-orange-400 text-xs"></i>
+                                            <i class="fa-solid fa-user-astronaut text-orange-400 text-xs"></i>
                                             <span id="page-author" class="text-sm font-semibold text-slate-200">...</span>
                                         </div>
-                                        <span class="text-xs font-mono text-slate-500 bg-slate-900/50 px-2 py-1 rounded" id="page-id">ID: 000</span>
+                                        <span class="text-xs font-mono text-slate-500 bg-slate-900/50 px-2 py-1 rounded border border-white/5" id="page-id">ID: 000</span>
                                     </div>
                                 </div>
-                                
                                 <div class="flex gap-3">
                                     <div class="flex flex-col items-center bg-slate-800/50 px-4 py-2 rounded-lg border border-white/5 min-w-[70px]">
-                                        <i class="fa-regular fa-eye text-blue-400 text-sm mb-1"></i>
+                                        <i class="fa-solid fa-eye text-blue-400 text-sm mb-1"></i>
                                         <span id="page-views" class="font-bold text-white text-sm">0</span>
                                     </div>
                                     <div class="flex flex-col items-center bg-slate-800/50 px-4 py-2 rounded-lg border border-white/5 min-w-[70px]">
@@ -143,79 +178,57 @@
                                     </div>
                                 </div>
                             </div>
-
                             <hr class="border-white/5 my-6">
-
                             <div class="prose prose-invert max-w-none">
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <i class="fa-solid fa-align-left text-orange-500"></i> Instructions & Notes
-                                </h3>
-                                <div class="bg-slate-900/40 p-5 rounded-xl border border-white/5">
-                                    <p id="page-desc" class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed font-light">...</p>
-                                </div>
+                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3"><i class="fa-solid fa-align-left text-orange-500 mr-2"></i> About</h3>
+                                <div class="bg-slate-900/40 p-5 rounded-xl border border-white/5"><p id="page-desc" class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed font-light">...</p></div>
                             </div>
                         </div>
 
                         <div class="glass-panel p-6 sm:p-8 rounded-2xl shadow-xl">
                             <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                                <span class="bg-green-500/10 text-green-400 p-2 rounded-lg"><i class="fa-solid fa-comments"></i></span>
-                                Community Reviews
+                                <span class="bg-green-500/10 text-green-400 p-2 rounded-lg"><i class="fa-solid fa-comments"></i></span> Reviews
                             </h3>
                             <div id="reviews-list" class="flex flex-col gap-4"></div>
                         </div>
                     </div>
 
+                    <!-- Right Sidebar -->
                     <div class="lg:col-span-4 flex flex-col gap-6 sticky top-24">
-                        <div class="glass-panel p-6 rounded-2xl shadow-2xl relative overflow-hidden group">
-                            <div class="absolute -top-12 -right-12 w-40 h-40 bg-orange-500/20 rounded-full blur-3xl group-hover:bg-orange-500/30 transition duration-1000"></div>
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 relative z-10">Community Score</h3>
+                        <div class="glass-panel p-6 rounded-2xl shadow-2xl relative overflow-hidden group border-t-4 border-t-orange-500">
+                            <div class="absolute -top-12 -right-12 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl group-hover:bg-orange-500/20 transition duration-1000"></div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 relative z-10 text-center">Score</h3>
                             <div class="flex flex-col items-center relative z-10">
-                                <div class="relative w-40 h-40 flex items-center justify-center mb-4">
-                                    <svg class="transform -rotate-90 w-40 h-40 drop-shadow-xl">
-                                        <circle cx="80" cy="80" r="70" stroke="#1e293b" stroke-width="12" fill="transparent" />
-                                        <circle id="page-circle" cx="80" cy="80" r="70" stroke="#facc15" stroke-width="12" fill="transparent" stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round" class="transition-all duration-1000 ease-out" />
-                                    </svg>
+                                <div class="relative w-48 h-48 flex items-center justify-center mb-4">
+                                    <svg class="transform -rotate-90 w-48 h-48 drop-shadow-2xl"><circle cx="96" cy="96" r="80" stroke="#1e293b" stroke-width="16" fill="transparent" /><circle id="page-circle" cx="96" cy="96" r="80" stroke="#facc15" stroke-width="16" fill="transparent" stroke-dasharray="502" stroke-dashoffset="502" stroke-linecap="round" class="transition-all duration-1000 ease-out" /></svg>
                                     <div class="absolute flex flex-col items-center">
-                                        <span id="page-rating-text" class="text-4xl font-black text-white tracking-tighter">?</span>
-                                        <span class="text-xs font-bold text-slate-500 uppercase mt-1">Rating</span>
+                                        <span id="page-rating-text" class="text-5xl font-black text-white tracking-tighter">?</span>
+                                        <span class="text-xs font-bold text-slate-500 uppercase mt-1">/ 10</span>
                                     </div>
                                 </div>
-                                <div class="text-center">
-                                    <div class="text-xl text-white font-bold mb-1 flex items-center justify-center gap-2">
-                                        <span id="page-score-display">--</span> <span class="text-yellow-500">★</span>
-                                    </div>
-                                    <div class="text-sm text-slate-400 bg-slate-900/60 px-3 py-1 rounded-full border border-white/5 inline-block">
-                                        Based on <span id="page-vote-count" class="font-bold text-white">0</span> votes
-                                    </div>
+                                <div class="text-center w-full">
+                                    <div class="text-lg text-white font-bold mb-2"><span id="page-score-display" class="text-slate-200">--</span></div>
+                                    <div class="text-xs text-slate-400 bg-slate-900/80 px-4 py-1.5 rounded-full border border-white/10 inline-flex items-center gap-2"><i class="fa-solid fa-users"></i> <span id="page-vote-count" class="font-bold text-white">0</span> votes</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="glass-panel p-6 rounded-2xl shadow-xl">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Rate & Review</h3>
-                            
+                        <div class="glass-panel p-6 rounded-2xl shadow-xl border border-white/10">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><i class="fa-solid fa-pen-nib text-orange-500"></i> Write a Review</h3>
                             <div id="vote-area" class="transition-opacity duration-300">
-                                <div class="flex justify-between mb-2 text-[10px] uppercase font-bold text-slate-500 tracking-wider px-1">
-                                    <span>Bad</span>
-                                    <span>Awesome</span>
-                                </div>
+                                <div class="flex justify-between mb-2 text-[10px] uppercase font-bold text-slate-500 px-1"><span>Bad</span><span>Epic</span></div>
                                 <div class="grid grid-cols-10 gap-1 mb-6 bg-slate-900/50 p-2 rounded-xl border border-white/5" id="stars-container"></div>
-                                <p id="vote-msg" class="text-center text-xs font-bold text-orange-400 h-4 mb-4 transition-colors"></p>
-                                
-                                <div class="relative">
-                                    <textarea id="review-comment" maxlength="500" class="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition mb-3 resize-y min-h-[80px]" placeholder="Review (Max 500 chars)"></textarea>
-                                    <span id="char-count" class="absolute bottom-4 right-3 text-[10px] text-slate-500">0/500</span>
+                                <p id="vote-msg" class="text-center text-xs font-bold text-orange-400 h-4 mb-4"></p>
+                                <div class="relative group">
+                                    <textarea id="review-comment" maxlength="500" class="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 text-sm text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition mb-3 resize-y min-h-[100px]" placeholder="Review (Optional)"></textarea>
+                                    <span id="char-count" class="absolute bottom-5 right-3 text-[10px] text-slate-600">0/500</span>
                                 </div>
-                                
-                                <button onclick="submitReview()" id="submit-btn" class="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-2.5 rounded-xl transition shadow-lg shadow-orange-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    Post Review
-                                </button>
+                                <button onclick="submitReview()" id="submit-btn" class="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-orange-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Post Review</button>
                             </div>
-                            
-                            <div id="login-warning" class="bg-slate-900/60 p-5 rounded-xl text-center border border-white/10 mt-2">
-                                <div class="bg-orange-500/10 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3 text-orange-500"><i class="fa-solid fa-lock"></i></div>
-                                <p class="text-slate-300 text-sm mb-3 font-medium">Login to rate & review</p>
-                                <button onclick="loginWithWorker()" class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 transition">Login with Scratch</button>
+                            <div id="login-warning" class="bg-slate-900/80 p-6 rounded-xl text-center border border-white/10 mt-2 backdrop-blur-sm">
+                                <div class="bg-orange-500/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-white"><i class="fa-solid fa-lock text-xl"></i></div>
+                                <p class="text-slate-300 text-sm mb-3">Login to rate</p>
+                                <button onclick="loginWithWorker()" class="w-full text-xs bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-lg border border-slate-600 transition font-bold">Login via Scratch</button>
                             </div>
                         </div>
                     </div>
@@ -229,6 +242,7 @@
         const PROXY = "https://api.allorigins.win/raw?url=";
         const API_TRENDING = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=trending&q=*";
         const API_SEARCH_BASE = "https://api.scratch.mit.edu/explore/projects?limit=40&mode=popular&q=";
+        const PROMPTS = ["Best feature?", "Found a bug?", "Art style?", "Gameplay loop?", "Improvement ideas?"];
 
         let currentProject = null, sessionToken = null, currentUser = null;
         let projectsData = [], projectsStatsCache = {}, currentRating = 0;
@@ -239,25 +253,18 @@
             handleRouting();
             if(!location.hash.startsWith('#project-')) fetchProjects();
             
-            // Character counter logic
-            const txt = document.getElementById('review-comment');
-            txt.addEventListener('input', () => {
-                document.getElementById('char-count').textContent = `${txt.value.length}/500`;
-                if(txt.value.length >= 500) document.getElementById('char-count').classList.add('text-red-500');
-                else document.getElementById('char-count').classList.remove('text-red-500');
+            document.getElementById('review-comment').addEventListener('input', (e) => {
+                document.getElementById('char-count').textContent = `${e.target.value.length}/500`;
             });
+            document.getElementById('review-comment').placeholder = PROMPTS[Math.floor(Math.random()*PROMPTS.length)];
         });
 
         window.addEventListener('hashchange', handleRouting);
 
         function handleRouting() {
             const hash = location.hash;
-            if (hash.startsWith('#project-')) {
-                const id = hash.replace('#project-', '');
-                showProjectPage(id);
-            } else {
-                showHomePage();
-            }
+            if (hash.startsWith('#project-')) showProjectPage(hash.replace('#project-', ''));
+            else showHomePage();
         }
 
         function navigateHome() { window.location.hash = ""; }
@@ -284,11 +291,7 @@
                     if(!res.ok) throw new Error("Not found");
                     p = await res.json();
                     if(!p.author) p.author = { username: p.username || "Unknown" };
-                } catch(e) {
-                    alert("Project not found.");
-                    navigateHome();
-                    return;
-                }
+                } catch(e) { alert("Project not found."); navigateHome(); return; }
             }
             currentProject = p;
             renderProjectDetails(p);
@@ -297,7 +300,6 @@
         function renderProjectDetails(p) {
             const thumbUrl = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
             document.getElementById('project-background').style.backgroundImage = `url('${thumbUrl}')`;
-
             document.getElementById('page-title').textContent = p.title;
             document.getElementById('page-author').textContent = p.author.username;
             document.getElementById('page-id').textContent = `ID: ${p.id}`;
@@ -308,10 +310,7 @@
 
             updatePageRating(0, 0, true);
             resetStars();
-            document.getElementById('review-comment').value = "";
-            document.getElementById('char-count').textContent = "0/500";
             document.getElementById('reviews-list').innerHTML = '<div class="flex justify-center py-8"><div class="loader"></div></div>';
-
             fetchProjectStatsAndReviews(p.id);
         }
 
@@ -322,61 +321,33 @@
                 projectsStatsCache[id] = data;
                 updatePageRating(Number(data.average), Number(data.count));
                 renderReviews(data.reviews || []);
-            } catch(e) {
-                document.getElementById('reviews-list').innerHTML = '<p class="text-center text-red-400 py-4">Failed to load reviews.</p>';
-            }
+            } catch(e) { document.getElementById('reviews-list').innerHTML = '<p class="text-red-400 text-center">Failed to load reviews.</p>'; }
         }
 
         function renderReviews(reviews) {
             const list = document.getElementById('reviews-list');
             list.innerHTML = '';
-            
-            if (reviews.length === 0) {
-                list.innerHTML = `<div class="text-center py-10 opacity-50"><i class="fa-regular fa-comments text-4xl mb-2"></i><p>No reviews yet. Be the first!</p></div>`;
-                return;
-            }
-
+            if (reviews.length === 0) { list.innerHTML = `<div class="text-center py-10 opacity-50"><i class="fa-regular fa-comments text-4xl mb-2"></i><p>No reviews yet.</p></div>`; return; }
             reviews.forEach(r => {
-                let colorClass = r.rating >= 8 ? 'bg-green-500/20 text-green-400 border-green-500/30' : (r.rating >= 5 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30');
-                const item = document.createElement('div');
-                item.className = "bg-slate-900/40 p-4 rounded-xl border border-white/5 flex flex-col gap-2 transition hover:bg-slate-900/60";
-                item.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold border border-white/5">${escapeHtml(r.username).charAt(0).toUpperCase()}</div>
-                            <div>
-                                <div class="font-bold text-slate-200 text-sm">${escapeHtml(r.username)}</div>
-                                <div class="text-[10px] text-slate-500">${new Date(r.timestamp).toLocaleDateString()}</div>
-                            </div>
-                        </div>
-                        <div class="${colorClass} px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5"><i class="fa-solid fa-star text-[10px]"></i> ${r.rating}</div>
-                    </div>
-                    ${r.comment ? `<p class="text-slate-300 text-sm mt-1 pl-11 leading-relaxed">${escapeHtml(r.comment)}</p>` : ''}`;
-                list.appendChild(item);
+                let colorClass = r.rating >= 8 ? 'text-green-400 border-green-500/30' : (r.rating >= 5 ? 'text-yellow-400 border-yellow-500/30' : 'text-red-400 border-red-500/30');
+                list.innerHTML += `<div class="bg-slate-900/40 p-4 rounded-xl border border-white/5 flex flex-col gap-2 hover:bg-slate-900/60">
+                    <div class="flex justify-between items-center"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-bold border border-white/5">${escapeHtml(r.username).charAt(0).toUpperCase()}</div><div><div class="font-bold text-sm text-white">${escapeHtml(r.username)}</div><div class="text-[10px] text-slate-500">${new Date(r.timestamp).toLocaleDateString()}</div></div></div><div class="${colorClass} px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 bg-slate-900"><i class="fa-solid fa-star text-[10px]"></i> ${r.rating}</div></div>${r.comment ? `<p class="text-slate-300 text-sm mt-1 pl-11">${escapeHtml(r.comment)}</p>` : ''}</div>`;
             });
         }
 
         function updatePageRating(avg, count, reset=false) {
             const circle = document.getElementById('page-circle');
-            const scoreDisplay = document.getElementById('page-score-display');
-            const ratingText = document.getElementById('page-rating-text');
+            const display = document.getElementById('page-score-display');
+            const ratingTxt = document.getElementById('page-rating-text');
             document.getElementById('page-vote-count').textContent = count;
-
-            if(reset) {
-                circle.style.strokeDashoffset = 440;
-                scoreDisplay.textContent = "--";
-                ratingText.textContent = "?";
-                return;
-            }
-            scoreDisplay.textContent = avg.toFixed(1);
-            ratingText.textContent = avg.toFixed(1);
-            const pct = (avg / 10) * 100;
-            circle.style.strokeDashoffset = 440 - (440 * pct) / 100;
-            if(avg >= 8) circle.setAttribute('stroke', '#4ade80');
-            else if(avg >= 5) circle.setAttribute('stroke', '#facc15');
-            else circle.setAttribute('stroke', '#f87171');
+            if(reset) { circle.style.strokeDashoffset = 502; display.textContent = "--"; ratingTxt.textContent = "?"; return; }
+            display.textContent = avg.toFixed(1);
+            ratingTxt.textContent = avg.toFixed(1);
+            circle.style.strokeDashoffset = 502 - (502 * (avg/10 * 100)) / 100;
+            if(avg>=8) circle.setAttribute('stroke', '#4ade80'); else if(avg>=5) circle.setAttribute('stroke', '#facc15'); else circle.setAttribute('stroke', '#f87171');
         }
 
+        // --- STARS & VOTING ---
         function generateStarsUI() {
             const c = document.getElementById('stars-container');
             c.innerHTML = '';
@@ -384,203 +355,131 @@
                 const b = document.createElement('i');
                 b.className = `star-btn fa-solid fa-star text-slate-700 text-lg flex justify-center py-1`;
                 b.id = `s${i}`;
-                b.onclick = () => { currentRating = i; highlightStars(i); document.getElementById('vote-msg').textContent = `Your Rating: ${i}/10`; };
+                b.onclick = () => { currentRating = i; highlightStars(i); document.getElementById('vote-msg').textContent = `${i}/10`; };
                 b.onmouseover = () => { highlightStars(i); document.getElementById('vote-msg').textContent = `${i}/10`; };
                 b.onmouseout = () => { if(currentRating===0) resetStars(); else highlightStars(currentRating); };
                 c.appendChild(b);
             }
         }
-
-        function highlightStars(num) {
-            const msg = document.getElementById('vote-msg');
-            msg.className = "text-center text-xs font-bold h-4 mb-4 transition-colors"; 
+        function highlightStars(n) {
             for(let j=1; j<=10; j++) {
                 const s = document.getElementById(`s${j}`);
-                s.classList.remove('text-slate-700', 'text-yellow-400', 'text-green-400', 'text-red-400');
-                if (j <= num) {
-                    if (num <= 4) { s.classList.add('text-red-400'); if(j===num) msg.classList.add('text-red-400'); }
-                    else if (num <= 7) { s.classList.add('text-yellow-400'); if(j===num) msg.classList.add('text-yellow-400'); }
-                    else { s.classList.add('text-green-400'); if(j===num) msg.classList.add('text-green-400'); }
-                } else { s.classList.add('text-slate-700'); }
+                s.classList.remove('text-slate-700','text-yellow-400','text-green-400','text-red-400');
+                if(j<=n) { if(n<=4) s.classList.add('text-red-400'); else if(n<=7) s.classList.add('text-yellow-400'); else s.classList.add('text-green-400'); } else s.classList.add('text-slate-700');
             }
         }
-
-        function resetStars() {
-            document.getElementById('vote-msg').textContent = "Select a rating";
-            document.getElementById('vote-msg').className = "text-center text-xs font-bold text-slate-500 h-4 mb-4";
-            for(let j=1; j<=10; j++) document.getElementById(`s${j}`).className = `star-btn fa-solid fa-star text-slate-700 text-lg flex justify-center py-1`;
-        }
+        function resetStars() { document.getElementById('vote-msg').textContent="Select rating"; for(let j=1; j<=10; j++) document.getElementById(`s${j}`).className=`star-btn fa-solid fa-star text-slate-700 text-lg flex justify-center py-1`; }
 
         async function submitReview() {
             if (!sessionToken) return alert("Login required");
-            if (currentRating === 0) return alert("Please select a star rating first.");
-            
+            if (currentRating === 0) return alert("Rate first!");
             const comment = document.getElementById('review-comment').value.trim();
             const btn = document.getElementById('submit-btn');
-            const originalText = btn.textContent;
-            
-            btn.disabled = true;
-            btn.textContent = "Posting...";
+            btn.disabled = true; btn.innerText = "Posting...";
             
             try {
-                const res = await fetch(`${WORKER_URL}/vote`, {
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ sessionToken, projectId: currentProject.id, rating: currentRating, comment })
-                });
-
+                const res = await fetch(`${WORKER_URL}/vote`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ sessionToken, projectId: currentProject.id, projectAuthor: currentProject.author.username, rating: currentRating, comment }) });
                 if(res.ok) {
-                    fetchProjectStatsAndReviews(currentProject.id);
-                    fetchCardStats(currentProject.id);
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#f97316', '#22c55e'] });
+                    fetchProjectStatsAndReviews(currentProject.id); fetchCardStats(currentProject.id);
                     document.getElementById('review-comment').value = "";
-                    document.getElementById('char-count').textContent = "0/500";
-                    btn.textContent = "Review Posted!";
+                    btn.innerHTML = `<i class="fa-solid fa-check"></i> Posted!`;
                     setTimeout(() => { btn.disabled = false; btn.textContent = "Post Review"; }, 2000);
-                } else { 
-                    const err = await res.json();
-                    if(res.status === 429) alert(err.error || "Too many requests. Please wait.");
-                    else throw new Error("Failed"); 
-                }
-            } catch(e) {
-                console.error(e);
-                alert("Error posting review. Try again.");
-                btn.disabled = false;
-                btn.textContent = originalText;
-            }
+                } else throw new Error("Failed");
+            } catch(e) { alert("Error"); btn.disabled = false; btn.textContent = "Post Review"; }
         }
 
-        async function fetchWithProxy(targetUrl) {
-            const proxyUrl = `${WORKER_URL}/proxy?url=${encodeURIComponent(targetUrl)}`;
-            const res = await fetch(proxyUrl);
-            if (!res.ok) throw new Error("Proxy error");
+        // --- DATA FETCHING & UI ---
+        async function fetchWithProxy(url) {
+            const res = await fetch(`${WORKER_URL}/proxy?url=${encodeURIComponent(url)}`);
+            if(!res.ok) throw new Error("Proxy error");
             return res.json();
         }
-
-        function handleSearch(e) {
-            e.preventDefault();
-            const query = document.getElementById('search-input').value.trim();
-            if(!query) return;
-            navigateHome();
-            toggleLoading(true);
-            fetchProjects(API_SEARCH_BASE + encodeURIComponent(query));
-        }
-
-        async function fetchProjects(url = API_TRENDING) {
+        function handleSearch(e) { e.preventDefault(); const q=document.getElementById('search-input').value.trim(); if(q){ navigateHome(); toggleLoading(true); fetchProjects(API_SEARCH_BASE+encodeURIComponent(q)); } }
+        async function fetchProjects(url=API_TRENDING) {
             try {
                 const data = await fetchWithProxy(url);
-                if(!data || data.length === 0) { toggleLoading(false, true); projectsData = []; return; }
+                if(!data||data.length===0) { toggleLoading(false,true); projectsData=[]; return; }
                 projectsData = data;
-                const ids = data.map(p => p.id);
-                fetchBatchStats(ids);
+                fetchBatchStats(data.map(p=>p.id));
+                renderTopCreators(); // Calculate top creators!
                 renderGrid(projectsData);
                 toggleLoading(false);
-            } catch (e) {
-                document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading Scratch API.</p>";
-            }
+            } catch(e) { document.getElementById('loading').innerHTML = "<p class='text-red-400'>Error loading data.</p>"; }
         }
-
         async function fetchBatchStats(ids) {
             try {
-                const res = await fetch(`${WORKER_URL}/stats-batch`, { method: 'POST', body: JSON.stringify({ ids }) });
-                if(res.ok) {
-                    const batchData = await res.json();
-                    Object.assign(projectsStatsCache, batchData);
-                    renderGrid(projectsData);
-                }
-            } catch(e) {}
+                const res = await fetch(`${WORKER_URL}/stats-batch`, {method:'POST', body:JSON.stringify({ids})});
+                if(res.ok) { Object.assign(projectsStatsCache, await res.json()); renderGrid(projectsData); renderTopCreators(); }
+            } catch(e){}
         }
-
-        async function fetchCardStats(id) {
-             try {
-                const res = await fetch(`${WORKER_URL}/stats?id=${id}`);
-                const data = await res.json();
-                projectsStatsCache[id] = data;
-             } catch(e) {}
-        }
+        async function fetchCardStats(id) { try { const r=await fetch(`${WORKER_URL}/stats?id=${id}`); projectsStatsCache[id]=await r.json(); } catch(e){} }
 
         function renderGrid(projects) {
-            const grid = document.getElementById('projects-grid');
-            grid.innerHTML = '';
+            const g = document.getElementById('projects-grid'); g.innerHTML = '';
             projects.forEach(p => {
-                const card = document.createElement('div');
-                card.className = "project-card bg-slate-800 rounded-xl overflow-hidden border border-slate-700 relative flex flex-col h-full";
-                card.onclick = () => window.location.hash = `project-${p.id}`;
-                const img = `https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png`;
-                
-                const stats = projectsStatsCache[p.id] || { count: 0, average: 0 };
-                let badgeHtml = '';
-                
-                if(stats.count >= 5) {
-                    let color = stats.average >= 8 ? 'bg-green-500 text-white' : (stats.average >= 5 ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white');
-                    badgeHtml = `<div class="absolute top-2 left-2 ${color} px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg flex items-center gap-1"><i class="fa-solid fa-star text-[8px]"></i> ${Number(stats.average).toFixed(1)}</div>`;
-                } else {
-                    badgeHtml = `<div class="absolute top-2 left-2 bg-gray-800/90 text-gray-400 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg flex items-center gap-1 border border-gray-600"><i class="fa-regular fa-clock text-[8px]"></i> Pending Rate</div>`;
-                }
+                const stats = projectsStatsCache[p.id] || {count:0,average:0};
+                let badge = stats.count>=5 ? `<div class="absolute top-2 left-2 ${stats.average>=8?'bg-green-500':'bg-yellow-500'} text-white px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg flex items-center gap-1"><i class="fa-solid fa-star text-[8px]"></i> ${Number(stats.average).toFixed(1)}</div>` : `<div class="absolute top-2 left-2 bg-slate-900/90 text-gray-400 px-2 py-0.5 rounded-md text-[10px] font-bold border border-slate-600"><i class="fa-regular fa-clock"></i> Pending</div>`;
+                g.innerHTML += `<div class="project-card bg-slate-800 rounded-xl overflow-hidden border border-slate-700 relative flex flex-col h-full" onclick="window.location.hash='project-${p.id}'"><div class="relative w-full aspect-[4/3] bg-black"><img src="https://cdn2.scratch.mit.edu/get_image/project/${p.id}_480x360.png" class="w-full h-full object-cover" loading="lazy"><div class="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white backdrop-blur-sm"><i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}</div>${badge}</div><div class="p-4"><h3 class="font-bold text-slate-100 truncate text-sm mb-1">${escapeHtml(p.title)}</h3><p class="text-xs text-slate-400">by <span class="text-orange-400">${escapeHtml(p.author.username)}</span></p></div></div>`;
+            });
+        }
 
-                card.innerHTML = `
-                    <div class="relative w-full aspect-[4/3] bg-black">
-                        <img src="${img}" class="w-full h-full object-cover" loading="lazy">
-                        <div class="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white backdrop-blur-sm flex items-center gap-1"><i class="fa-solid fa-eye"></i> ${formatNum(p.stats.views)}</div>
-                        ${badgeHtml}
-                    </div>
-                    <div class="p-4 flex-grow flex flex-col justify-between">
-                        <div>
-                            <h3 class="font-bold text-slate-100 truncate text-sm mb-1" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h3>
-                            <p class="text-xs text-slate-400">by <span class="text-orange-400">${escapeHtml(p.author.username)}</span></p>
+        // --- NEW: TOP CREATORS LOGIC ---
+        function renderTopCreators() {
+            const creators = {};
+            projectsData.forEach(p => {
+                const author = p.author.username;
+                const stats = projectsStatsCache[p.id] || { average: 0, count: 0 };
+                if (!creators[author]) creators[author] = { id: p.author.id, username: author, totalScore: 0, projects: 0 };
+                // Score formula: Rating weighted by log of votes to prevent 1-vote wonders
+                if (stats.count > 0) {
+                    creators[author].totalScore += stats.average * Math.log10(stats.count + 1);
+                    creators[author].projects++;
+                }
+            });
+
+            // Convert to array and sort
+            const sortedCreators = Object.values(creators)
+                .filter(c => c.projects > 0)
+                .sort((a, b) => (b.totalScore / b.projects) - (a.totalScore / a.projects))
+                .slice(0, 8); // Top 8
+
+            const list = document.getElementById('creators-list');
+            const section = document.getElementById('creators-section');
+            
+            if (sortedCreators.length === 0) { section.classList.add('hidden'); return; }
+            section.classList.remove('hidden');
+            list.innerHTML = '';
+
+            sortedCreators.forEach((c, index) => {
+                const score = (c.totalScore / c.projects).toFixed(1);
+                list.innerHTML += `
+                    <div class="creator-card min-w-[120px] bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2 cursor-pointer relative" onclick="handleSearch({preventDefault:()=>{}}); toggleLoading(true); fetchProjects(API_SEARCH_BASE + encodeURIComponent('${c.username}'))">
+                        <div class="absolute top-1 left-1 text-[10px] font-bold text-slate-500">#${index+1}</div>
+                        <img src="https://cdn2.scratch.mit.edu/get_image/user/${c.id}_60x60.png" class="w-12 h-12 rounded-full border-2 border-slate-600">
+                        <div class="text-center">
+                            <div class="font-bold text-slate-200 text-xs truncate max-w-[100px]">${c.username}</div>
+                            <div class="text-[10px] text-green-400 font-bold">Score: ${score}</div>
                         </div>
                     </div>`;
-                grid.appendChild(card);
             });
         }
 
         function sortGrid(mode) {
-            document.querySelectorAll('.sort-btn').forEach(b => {
-                b.classList.remove('bg-slate-700', 'border-slate-500', 'text-white', 'shadow-lg');
-                b.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
-            });
-            const btn = document.getElementById(`sort-${mode}`);
-            btn.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-700');
-            btn.classList.add('bg-slate-700', 'border-slate-500', 'text-white', 'shadow-lg');
-
-            let sorted = [...projectsData];
-            if (mode !== 'default') {
-                sorted = sorted.filter(p => (projectsStatsCache[p.id]?.count || 0) > 0);
-                if (mode === 'best') sorted.sort((a, b) => (projectsStatsCache[b.id]?.average || 0) - (projectsStatsCache[a.id]?.average || 0));
-                else if (mode === 'worst') sorted.sort((a, b) => (projectsStatsCache[a.id]?.average || 0) - (projectsStatsCache[b.id]?.average || 0));
-                else if (mode === 'most-voted') sorted.sort((a, b) => (projectsStatsCache[b.id]?.count || 0) - (projectsStatsCache[a.id]?.count || 0));
-            }
-            renderGrid(sorted);
+            document.querySelectorAll('.sort-btn').forEach(b=>{ b.classList.remove('bg-slate-700','border-slate-500','text-white','shadow-lg'); b.classList.add('bg-slate-800','text-slate-300','border-slate-700'); });
+            document.getElementById(`sort-${mode}`).classList.replace('bg-slate-800','bg-slate-700');
+            let s=[...projectsData];
+            if(mode!=='default'){ s=s.filter(p=>(projectsStatsCache[p.id]?.count||0)>0); if(mode==='best')s.sort((a,b)=>(projectsStatsCache[b.id]?.average||0)-(projectsStatsCache[a.id]?.average||0)); else if(mode==='worst')s.sort((a,b)=>(projectsStatsCache[a.id]?.average||0)-(projectsStatsCache[b.id]?.average||0)); else if(mode==='most-voted')s.sort((a,b)=>(projectsStatsCache[b.id]?.count||0)-(projectsStatsCache[a.id]?.count||0)); }
+            renderGrid(s);
         }
 
-        function toggleLoading(show, empty=false) {
-            const l = document.getElementById('loading');
-            const g = document.getElementById('projects-grid');
-            const n = document.getElementById('no-results');
-            if(show) { l.classList.remove('hidden'); g.classList.add('hidden'); n.classList.add('hidden'); }
-            else { l.classList.add('hidden'); g.classList.toggle('hidden', empty); n.classList.toggle('hidden', !empty); }
-        }
-
-        function checkAuth() {
-            const p = new URLSearchParams(location.search);
-            if(p.get('token')) { localStorage.setItem('s_tok', p.get('token')); localStorage.setItem('s_usr', p.get('username')); history.replaceState({},'', '/'); }
-            sessionToken = localStorage.getItem('s_tok');
-            currentUser = localStorage.getItem('s_usr');
-            if(sessionToken) {
-                document.getElementById('btn-login').classList.add('hidden');
-                document.getElementById('user-info').classList.remove('hidden');
-                document.getElementById('username-display').textContent = currentUser;
-                document.getElementById('vote-area').classList.remove('opacity-50', 'pointer-events-none');
-                document.getElementById('login-warning').classList.add('hidden');
-            }
-        }
-        function loginWithWorker() { location.href = `${WORKER_URL}/auth/login`; }
+        function toggleLoading(s,e=false) { const l=document.getElementById('loading'),g=document.getElementById('projects-grid'),n=document.getElementById('no-results'); if(s){l.classList.remove('hidden');g.classList.add('hidden');n.classList.add('hidden');}else{l.classList.add('hidden');g.classList.toggle('hidden',e);n.classList.toggle('hidden',!e);} }
+        function surpriseMe() { if(projectsData.length){ window.location.hash=`project-${projectsData[Math.floor(Math.random()*projectsData.length)].id}`; } }
+        function checkAuth() { const p=new URLSearchParams(location.search); if(p.get('token')){localStorage.setItem('s_tok',p.get('token'));localStorage.setItem('s_usr',p.get('username'));history.replaceState({},'','/');} sessionToken=localStorage.getItem('s_tok'); currentUser=localStorage.getItem('s_usr'); if(sessionToken){document.getElementById('btn-login').classList.add('hidden');document.getElementById('user-info').classList.remove('hidden');document.getElementById('username-display').textContent=currentUser;document.getElementById('vote-area').classList.remove('opacity-50','pointer-events-none');document.getElementById('login-warning').classList.add('hidden');} }
+        function loginWithWorker() { location.href=`${WORKER_URL}/auth/login`; }
         function logout() { localStorage.clear(); location.reload(); }
-        function formatNum(n) { return new Intl.NumberFormat('en-US', {notation:"compact"}).format(n); }
-        
-        function escapeHtml(text) { 
-            if (!text) return "";
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); 
-        }
+        function formatNum(n) { return new Intl.NumberFormat('en-US',{notation:"compact"}).format(n); }
+        function escapeHtml(t) { return t?t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"):"" }
     </script>
 </body>
 </html>
